@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel智能分析平台</title>
+    <!-- SheetJS 处理Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- ECharts 数据可视化 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; color: #1a1a2e; margin-bottom: 30px; }
+        .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .card h2 { color: #16213e; margin-bottom: 16px; font-size: 18px; border-left: 4px solid #0f3460; padding-left: 12px; }
+        .upload-area { border: 2px dashed #0f3460; border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .upload-area:hover { background: #f0f4ff; border-color: #e94560; }
+        .upload-area input { display: none; }
+        .btn { background: #0f3460; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-right: 10px; margin-top: 10px; transition: all 0.3s; }
+        .btn:hover { background: #e94560; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
+        th, td { border: 1px solid #e0e0e0; padding: 8px 12px; text-align: left; }
+        th { background: #f8f9fa; font-weight: 600; position: sticky; top: 0; }
+        tr:hover { background: #f5f7fa; }
+        .error-cell { background: #ffebee !important; color: #c62828; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px; }
+        .stat-item { background: #f8f9fa; padding: 16px; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 28px; font-weight: bold; color: #0f3460; }
+        .stat-label { font-size: 12px; color: #666; margin-top: 4px; }
+        #chart { width: 100%; height: 400px; margin-top: 20px; }
+        .report { background: #f8f9fa; padding: 20px; border-radius: 8px; line-height: 1.8; white-space: pre-wrap; }
+        .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid #f3f3f3; border-top: 2px solid #0f3460; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 8px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none; }
+        .progress { width: 100%; height: 4px; background: #e0e0e0; border-radius: 2px; margin-top: 10px; overflow: hidden; }
+        .progress-bar { height: 100%; background: #0f3460; width: 0%; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Excel 智能分析与 AI 报告生成平台</h1>
+        
+        <!-- 1. 文件上传 -->
+        <div class="card">
+            <h2>1. Excel 导入</h2>
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
+                <p style="font-size: 48px; margin-bottom: 10px;">📁</p>
+                <p>点击上传 Excel 文件（.xlsx / .xls / .csv）</p>
+                <p style="color: #999; font-size: 12px; margin-top: 8px;">支持拖拽上传</p>
+            </div>
+            <div class="progress hidden" id="progressBar"><div class="progress-bar" id="progressFill"></div></div>
+            <p id="fileInfo" style="margin-top: 10px; color: #666;"></p>
+        </div>
+
+        <!-- 2. 数据清洗 -->
+        <div class="card hidden" id="cleanCard">
+            <h2>2. 数据清洗</h2>
+            <div class="stats" id="cleanStats"></div>
+            <div style="margin-top: 16px;">
+                <button class="btn" onclick="removeDuplicates()">🔄 去重处理</button>
+                <button class="btn" onclick="removeEmptyRows()">🗑️ 删除空行</button>
+                <button class="btn" onclick="trimSpaces()">✂️ 去除首尾空格</button>
+                <button class="btn" onclick="convertTypes()">🔢 智能类型转换</button>
+                <button class="btn" onclick="resetData()">↩️ 重置数据</button>
+            </div>
+            <div style="margin-top: 16px; max-height: 300px; overflow: auto;">
+                <table id="dataTable"></table>
+            </div>
+        </div>
+
+        <!-- 3. 数据核验 -->
+        <div class="card hidden" id="verifyCard">
+            <h2>3. 数据核验</h2>
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 14px; color: #666;">选择要核验的列：</label>
+                <select id="verifyColumn" style="padding: 6px 12px; margin-left: 8px; border-radius: 4px; border: 1px solid #ddd;"></select>
+                <select id="verifyRule" style="padding: 6px 12px; margin-left: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                    <option value="notEmpty">非空检查</option>
+                    <option value="isNumber">数值检查</option>
+                    <option value="isDate">日期检查</option>
+                    <option value="positive">正数检查</option>
+                    <option value="email">邮箱格式</option>
+                </select>
+                <button class="btn" onclick="runVerification()">🔍 开始核验</button>
+            </div>
+            <p id="verifyResult" style="color: #666; font-size: 14px;"></p>
+        </div>
+
+        <!-- 4. 数据分析 -->
+        <div class="card hidden" id="analysisCard">
+            <h2>4. 数据分析与可视化</h2>
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 14px; color: #666;">X轴（分类）：</label>
+                <select id="xAxis" style="padding: 6px 12px; margin: 0 16px 0 8px; border-radius: 4px; border: 1px solid #ddd;"></select>
+                <label style="font-size: 14px; color: #666;">Y轴（数值）：</label>
+                <select id="yAxis" style="padding: 6px 12px; margin: 0 16px 0 8px; border-radius: 4px; border: 1px solid #ddd;"></select>
+                <select id="chartType" style="padding: 6px 12px; border-radius: 4px; border: 1px solid #ddd;">
+                    <option value="bar">柱状图</option>
+                    <option value="line">折线图</option>
+                    <option value="pie">饼图</option>
+                    <option value="scatter">散点图</option>
+                </select>
+                <button class="btn" onclick="drawChart()">📈 生成图表</button>
+            </div>
+            <div id="chart"></div>
+        </div>
+
+        <!-- 5. AI 报告 -->
+        <div class="card hidden" id="reportCard">
+            <h2>5. AI 智能报告生成</h2>
+            <p style="color: #666; font-size: 14px; margin-bottom: 16px;">基于清洗后的数据，自动生成专业的数据分析报告</p>
+            <button class="btn" id="reportBtn" onclick="generateReport()">🤖 生成 AI 分析报告</button>
+            <div id="reportContent" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <script>
+        let originalData = [];
+        let currentData = [];
+        let headers = [];
+        let chartInstance = null;
+
+        // 处理文件上传
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            document.getElementById('fileInfo').textContent = `正在读取: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+            document.getElementById('progressBar').classList.remove('hidden');
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                    
+                    if (jsonData.length < 2) {
+                        alert('文件数据太少，至少需要表头和一行数据');
+                        return;
+                    }
+                    
+                    headers = jsonData[0].map(h => String(h).trim());
+                    originalData = jsonData.slice(1).map(row => {
+                        const obj = {};
+                        headers.forEach((h, i) => obj[h] = row[i]);
+                        return obj;
+                    });
+                    currentData = JSON.parse(JSON.stringify(originalData));
+                    
+                    updateProgress(100);
+                    showData();
+                    showSections();
+                    document.getElementById('fileInfo').textContent = `✅ 成功导入: ${file.name} | ${currentData.length} 行 × ${headers.length} 列`;
+                } catch (err) {
+                    alert('读取失败: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function updateProgress(pct) {
+            document.getElementById('progressFill').style.width = pct + '%';
+        }
+
+        function showSections() {
+            ['cleanCard', 'verifyCard', 'analysisCard', 'reportCard'].forEach(id => {
+                document.getElementById(id).classList.remove('hidden');
+            });
+            populateSelects();
+        }
+
+        function populateSelects() {
+            const selects = ['verifyColumn', 'xAxis', 'yAxis'];
+            selects.forEach(id => {
+                const sel = document.getElementById(id);
+                sel.innerHTML = headers.map(h => `<option value="${h}">${h}</option>`).join('');
+            });
+        }
+
+        function showData() {
+            const table = document.getElementById('dataTable');
+            let html = '<thead><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+            currentData.slice(0, 50).forEach(row => {
+                html += '<tr>' + headers.map(h => `<td>${row[h] !== undefined ? row[h] : ''}</td>`).join('') + '</tr>';
+            });
+            if (currentData.length > 50) html += `<tr><td colspan="${headers.length}" style="text-align:center;color:#999;">... 还有 ${currentData.length - 50} 行 ...</td></tr>`;
+            html += '</tbody>';
+            table.innerHTML = html;
+            updateCleanStats();
+        }
+
+        function updateCleanStats() {
+            const emptyCount = currentData.reduce((sum, row) => sum + headers.filter(h => row[h] === undefined || row[h] === null || row[h] === '').length, 0);
+            const duplicateCount = findDuplicates().length;
+            document.getElementById('cleanStats').innerHTML = `
+                <div class="stat-item"><div class="stat-value">${currentData.length}</div><div class="stat-label">总行数</div></div>
+                <div class="stat-item"><div class="stat-value">${headers.length}</div><div class="stat-label">总列数</div></div>
+                <div class="stat-item"><div class="stat-value" style="color:${emptyCount>0?'#e94560':'#0f3460'}">${emptyCount}</div><div class="stat-label">空值数量</div></div>
+                <div class="stat-item"><div class="stat-value" style="color:${duplicateCount>0?'#e94560':'#0f3460'}">${duplicateCount}</div><div class="stat-label">重复行数</div></div>
+            `;
+        }
+
+        function findDuplicates() {
+            const seen = new Set();
+            const dups = [];
+            currentData.forEach((row, idx) => {
+                const key = JSON.stringify(row);
+                if (seen.has(key)) dups.push(idx);
+                else seen.add(key);
+            });
+            return dups;
+        }
+
+        // 数据清洗功能
+        function removeDuplicates() {
+            const seen = new Set();
+            currentData = currentData.filter(row => {
+                const key = JSON.stringify(row);
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+            showData();
+            alert(`已删除重复行，剩余 ${currentData.length} 行`);
+        }
+
+        function removeEmptyRows() {
+            const before = currentData.length;
+            currentData = currentData.filter(row => headers.some(h => row[h] !== undefined && row[h] !== null && row[h] !== ''));
+            showData();
+            alert(`已删除空行: ${before - currentData.length} 行`);
+        }
+
+        function trimSpaces() {
+            currentData.forEach(row => {
+                headers.forEach(h => {
+                    if (typeof row[h] === 'string') row[h] = row[h].trim();
+                });
+            });
+            showData();
+            alert('已去除所有字符串首尾空格');
+        }
+
+        function convertTypes() {
+            currentData.forEach(row => {
+                headers.forEach(h => {
+                    const val = row[h];
+                    if (typeof val === 'string') {
+                        if (!isNaN(val) && val !== '') row[h] = Number(val);
+                        else if (!isNaN(Date.parse(val))) row[h] = new Date(val).toISOString().split('T')[0];
+                    }
+                });
+            });
+            showData();
+            alert('已完成智能类型转换（数字/日期）');
+        }
+
+        function resetData() {
+            currentData = JSON.parse(JSON.stringify(originalData));
+            showData();
+            alert('数据已重置为原始状态');
+        }
+
+        // 数据核验
+        function runVerification() {
+            const col = document.getElementById('verifyColumn').value;
+            const rule = document.getElementById('verifyRule').value;
+            const cells = document.querySelectorAll('#dataTable td');
+            cells.forEach(cell => cell.classList.remove('error-cell'));
+            
+            let errors = 0;
+            const rows = document.querySelectorAll('#dataTable tbody tr');
+            const colIdx = headers.indexOf(col);
+            
+            currentData.forEach((row, idx) => {
+                const val = row[col];
+                let isError = false;
+                
+                switch(rule) {
+                    case 'notEmpty': isError = val === undefined || val === null || val === ''; break;
+                    case 'isNumber': isError = isNaN(Number(val)) || val === ''; break;
+                    case 'isDate': isError = isNaN(Date.parse(val)); break;
+                    case 'positive': isError = isNaN(Number(val)) || Number(val) <= 0; break;
+                    case 'email': isError = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(val)); break;
+                }
+                
+                if (isError && idx < 50) {
+                    const tr = rows[idx];
+                    if (tr && tr.cells[colIdx]) tr.cells[colIdx].classList.add('error-cell');
+                    errors++;
+                } else if (isError) {
+                    errors++;
+                }
+            });
+            
+            document.getElementById('verifyResult').innerHTML = 
+                `核验结果: <strong style="color:${errors>0?'#e94560':'#4caf50'}">${errors > 0 ? `发现 ${errors} 处异常` : '✅ 全部通过'}</strong>`;
+        }
+
+        // 数据分析图表
+        function drawChart() {
+            const xCol = document.getElementById('xAxis').value;
+            const yCol = document.getElementById('yAxis').value;
+            const type = document.getElementById('chartType').value;
+            
+            if (chartInstance) chartInstance.dispose();
+            chartInstance = echarts.init(document.getElementById('chart'));
+            
+            let option;
+            if (type === 'pie') {
+                const counts = {};
+                currentData.forEach(row => {
+                    const k = String(row[xCol] || '空');
+                    const v = Number(row[yCol]) || 0;
+                    counts[k] = (counts[k] || 0) + v;
+                });
+                option = {
+                    title: { text: `${xCol} 占比分布`, left: 'center' },
+                    tooltip: { trigger: 'item' },
+                    series: [{
+                        type: 'pie',
+                        radius: '60%',
+                        data: Object.entries(counts).map(([name, value]) => ({ name, value }))
+                    }]
+                };
+            } else {
+                const xData = currentData.map(row => row[xCol]);
+                const yData = currentData.map(row => Number(row[yCol]) || 0);
+                option = {
+                    title: { text: `${xCol} vs ${yCol}`, left: 'center' },
+                    tooltip: { trigger: 'axis' },
+                    xAxis: { type: 'category', data: xData, axisLabel: { rotate: 45 } },
+                    yAxis: { type: 'value' },
+                    series: [{ 
+                        data: yData, 
+                        type: type,
+                        smooth: type === 'line'
+                    }]
+                };
+            }
+            chartInstance.setOption(option);
+        }
+
+        // AI 报告生成
+        async function generateReport() {
+            const btn = document.getElementById('reportBtn');
+            const content = document.getElementById('reportContent');
+            btn.disabled = true;
+            content.innerHTML = '<div class="report">正在分析数据并生成报告<span class="loading"></span></div>';
+            
+            // 准备数据摘要
+            const summary = {
+                rowCount: currentData.length,
+                colCount: headers.length,
+                columns: headers,
+                sample: currentData.slice(0, 5)
+            };
+            
+            // 计算各列统计信息
+            const stats = {};
+            headers.forEach(h => {
+                const vals = currentData.map(r => r[h]).filter(v => v !== undefined && v !== null && v !== '');
+                const nums = vals.map(v => Number(v)).filter(v => !isNaN(v));
+                stats[h] = {
+                    type: nums.length > vals.length * 0.7 ? 'numeric' : 'text',
+                    count: vals.length,
+                    unique: [...new Set(vals)].length,
+                    min: nums.length ? Math.min(...nums) : null,
+                    max: nums.length ? Math.max(...nums) : null,
+                    avg: nums.length ? (nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(2) : null
+                };
+            });
+            
+            const prompt = `你是一位资深数据分析师。请基于以下数据生成一份专业的中文数据分析报告，包含：1.数据概览 2.关键发现 3.趋势分析 4.建议\n\n数据概览：${JSON.stringify(summary)}\n统计信息：${JSON.stringify(stats)}`;
+            
+            try {
+                // 这里调用你的 Cloudflare Worker
+                const response = await fetch('https://你的-worker-地址.workers.dev', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+                
+                const result = await response.json();
+                content.innerHTML = `<div class="report"><strong>🤖 AI 分析报告</strong>\n\n${result.report || result.choices?.[0]?.message?.content || '生成失败'}</div>`;
+            } catch (err) {
+                content.innerHTML = `<div class="report" style="color:#c62828;">生成失败: ${err.message}<br>请检查 Worker 地址是否正确配置</div>`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // 拖拽上传支持
+        document.querySelector('.upload-area').addEventListener('dragover', e => {
+            e.preventDefault();
+            e.currentTarget.style.borderColor = '#e94560';
+        });
+        document.querySelector('.upload-area').addEventListener('dragleave', e => {
+            e.currentTarget.style.borderColor = '#0f3460';
+        });
+        document.querySelector('.upload-area').addEventListener('drop', e => {
+            e.preventDefault();
+            e.currentTarget.style.borderColor = '#0f3460';
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                document.getElementById('fileInput').files = files;
+                handleFile({ target: { files } });
+            }
+        });
+    </script>
+</body>
+</html>
