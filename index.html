@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel 智能分析与 AI 报告生成平台 - AlaSQL Pro版</title>
+    <title>Excel 智能分析与 AI 报告生成平台 - 智能导入版</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/alasql@4"></script>
@@ -36,6 +36,8 @@
         .btn-sm { padding: 6px 14px; font-size: 13px; }
         .btn-purple { background: #f3e8ff; color: #7c3aed; border: 1px solid #ddd6fe; }
         .btn-purple:hover { background: #ede9fe; }
+        .btn-orange { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
+        .btn-orange:hover { background: #ffedd5; }
         .table-wrap { max-height: 360px; overflow: auto; border-radius: 10px; border: 1px solid #e5e7eb; margin-top: 16px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }
@@ -76,9 +78,6 @@
         .compare-box.after h4 { color: #059669; }
         #chart { width: 100%; height: 420px; margin-top: 20px; }
         .report { background: #f8fafc; padding: 24px; border-radius: 12px; line-height: 1.8; white-space: pre-wrap; border: 1px solid #e2e8f0; font-size: 14px; color: #334155; }
-        .report h3 { color: #1e293b; margin: 16px 0 8px; font-size: 16px; }
-        .report ul { margin-left: 20px; }
-        .report li { margin-bottom: 4px; }
         .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid #e5e7eb; border-top: 2px solid #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite; margin-left: 8px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .hidden { display: none !important; }
@@ -88,6 +87,7 @@
         .badge-red { background: #fef2f2; color: #dc2626; }
         .badge-gray { background: #f3f4f6; color: #6b7280; }
         .badge-purple { background: #f3e8ff; color: #7c3aed; }
+        .badge-orange { background: #fff7ed; color: #ea580c; }
         .progress { width: 100%; height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 12px; overflow: hidden; }
         .progress-bar { height: 100%; background: #2563eb; width: 0%; transition: width 0.4s ease; }
         .section-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 0; }
@@ -105,32 +105,124 @@
         .sql-result { background: #f9fafb; border-radius: 8px; padding: 12px; border: 1px solid #e5e7eb; margin-top: 12px; font-size: 12px; max-height: 150px; overflow: auto; }
         .sql-result.success { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
         .sql-result.error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+
+        /* 智能导入面板 */
+        .import-wizard { background: #fafafa; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; }
+        .import-step { display: none; }
+        .import-step.active { display: block; }
+        .step-indicator { display: flex; gap: 8px; margin-bottom: 20px; }
+        .step-dot { width: 32px; height: 32px; border-radius: 50%; background: #e5e7eb; color: #6b7280; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; }
+        .step-dot.active { background: #2563eb; color: white; }
+        .step-dot.done { background: #059669; color: white; }
+        .step-label { font-size: 12px; color: #6b7280; margin-top: 4px; text-align: center; }
+        .sheet-card { background: white; border-radius: 8px; padding: 14px 16px; border: 2px solid #e5e7eb; cursor: pointer; transition: all 0.2s; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+        .sheet-card:hover { border-color: #3b82f6; background: #eff6ff; }
+        .sheet-card.selected { border-color: #2563eb; background: #eff6ff; }
+        .sheet-card .sheet-name { font-weight: 600; color: #111827; }
+        .sheet-card .sheet-info { font-size: 12px; color: #6b7280; margin-top: 2px; }
+        .preview-table { border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
+        .preview-table th { background: #f0f9ff; color: #0369a1; }
+        .header-row-option { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border-radius: 8px; border: 2px solid #e5e7eb; cursor: pointer; margin-bottom: 6px; transition: all 0.15s; }
+        .header-row-option:hover { border-color: #3b82f6; }
+        .header-row-option.selected { border-color: #2563eb; background: #eff6ff; }
+        .header-row-option .row-num { font-size: 11px; color: #6b7280; background: #f3f4f6; padding: 2px 8px; border-radius: 4px; }
+        .encoding-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+        .encoding-ok { background: #ecfdf5; color: #059669; }
+        .encoding-warn { background: #fff7ed; color: #ea580c; }
+        .encoding-error { background: #fef2f2; color: #dc2626; }
     </style>
 <base target="_blank">
 </head>
 <body>
     <div class="container">
         <h1>📊 Excel 智能分析与 AI 报告生成平台</h1>
-        <p class="subtitle">支持 Excel 导入 · 智能数据清洗 · AlaSQL 引擎 · AI 报告生成</p>
+        <p class="subtitle">智能导入 · 多Sheet识别 · 自动表头检测 · AlaSQL · AI报告</p>
 
+        <!-- 1. 智能文件导入 -->
         <div class="card" id="uploadCard">
-            <h2><span class="icon">📁</span>1. Excel 导入</h2>
-            <div class="upload-area" id="dropZone">
-                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
-                <div class="upload-icon">📂</div>
-                <div class="upload-text">点击或拖拽上传 Excel 文件</div>
-                <div class="upload-hint">支持 .xlsx / .xls / .csv 格式</div>
+            <h2><span class="icon">📁</span>1. 智能 Excel 导入</h2>
+
+            <!-- 步骤 0: 上传文件 -->
+            <div class="import-step active" id="step-upload">
+                <div class="upload-area" id="dropZone">
+                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
+                    <div class="upload-icon">📂</div>
+                    <div class="upload-text">点击或拖拽上传 Excel 文件</div>
+                    <div class="upload-hint">支持 .xlsx / .xls / .csv · 自动识别多工作表 · 智能检测表头</div>
+                </div>
+                <div class="progress hidden" id="progressBar"><div class="progress-bar" id="progressFill"></div></div>
+                <p id="fileInfo" style="margin-top: 12px; color: #6b7280; font-size: 13px;"></p>
             </div>
-            <div class="progress hidden" id="progressBar"><div class="progress-bar" id="progressFill"></div></div>
-            <p id="fileInfo" style="margin-top: 12px; color: #6b7280; font-size: 13px;"></p>
+
+            <!-- 步骤 1: 选择工作表 -->
+            <div class="import-step" id="step-sheet">
+                <div class="step-indicator">
+                    <div><div class="step-dot done">1</div><div class="step-label">上传</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot active">2</div><div class="step-label">选Sheet</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot">3</div><div class="step-label">确认表头</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot">4</div><div class="step-label">预览导入</div></div>
+                </div>
+                <h3 style="font-size:14px;color:#374151;margin-bottom:12px;">📑 检测到多个工作表，请选择要导入的 Sheet：</h3>
+                <div id="sheetList"></div>
+                <div style="margin-top:16px;display:flex;gap:10px;">
+                    <button class="btn btn-secondary btn-sm" onclick="goBackToUpload()">← 重新上传</button>
+                </div>
+            </div>
+
+            <!-- 步骤 2: 确认表头行 -->
+            <div class="import-step" id="step-header">
+                <div class="step-indicator">
+                    <div><div class="step-dot done">1</div><div class="step-label">上传</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot done">2</div><div class="step-label">选Sheet</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot active">3</div><div class="step-label">确认表头</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot">4</div><div class="step-label">预览导入</div></div>
+                </div>
+                <h3 style="font-size:14px;color:#374151;margin-bottom:12px;">🔍 请选择哪一行是表头（列名）：</h3>
+                <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">系统已智能推荐，如不正确请手动选择</div>
+                <div id="headerOptions"></div>
+                <div style="margin-top:16px;display:flex;gap:10px;">
+                    <button class="btn btn-secondary btn-sm" onclick="goBackToSheet()">← 上一步</button>
+                </div>
+            </div>
+
+            <!-- 步骤 3: 预览并确认导入 -->
+            <div class="import-step" id="step-preview">
+                <div class="step-indicator">
+                    <div><div class="step-dot done">1</div><div class="step-label">上传</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot done">2</div><div class="step-label">选Sheet</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot done">3</div><div class="step-label">确认表头</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot active">4</div><div class="step-label">预览导入</div></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                    <h3 style="font-size:14px;color:#374151;">👁️ 数据预览（前 5 行）</h3>
+                    <span id="encodingStatus" class="encoding-badge encoding-ok">✓ 编码正常</span>
+                    <span id="dataSummary" style="font-size:13px;color:#6b7280;"></span>
+                </div>
+                <div class="preview-table"><table id="previewTable"></table></div>
+                <div style="margin-top:16px;display:flex;gap:10px;">
+                    <button class="btn btn-success" onclick="confirmImport()">✅ 确认导入</button>
+                    <button class="btn btn-secondary btn-sm" onclick="goBackToHeader()">← 上一步</button>
+                    <button class="btn btn-danger btn-sm" onclick="goBackToUpload()">🔄 重新上传</button>
+                </div>
+            </div>
         </div>
 
+        <!-- 2. 数据清洗 -->
         <div class="card hidden" id="cleanCard">
             <h2><span class="icon">🧹</span>2. 智能数据清洗 <span class="badge badge-purple">AlaSQL</span></h2>
             <div class="stats" id="cleanStats"></div>
             <div class="section-tabs" style="margin-top: 20px;">
                 <button class="section-tab active" onclick="switchTab('rule')" id="tab-rule">⚙️ 规则引擎</button>
-                <button class="section-tab" onclick="switchTab('sql')" id="tab-sql">🗄️ SQL 查询清洗 (AlaSQL)</button>
+                <button class="section-tab" onclick="switchTab('sql')" id="tab-sql">🗄️ SQL 查询清洗</button>
             </div>
             <div id="panel-rule">
                 <div class="clean-layout">
@@ -203,8 +295,7 @@
                             <button class="btn btn-sm btn-danger" onclick="resetAll()">🔄 重置</button>
                         </div>
                         <div class="sql-hint">
-                            <strong>💡 提示：</strong>AlaSQL 支持完整 SQL 语法：<code>SELECT</code> <code>WHERE</code> <code>GROUP BY</code> <code>ORDER BY</code> <code>JOIN</code> <code>UNION</code> 等。<br>
-                            <strong>中文列名已自动处理</strong>，无需手动加反引号，系统会自动识别并包裹。<br>
+                            <strong>💡 提示：</strong>AlaSQL 支持完整 SQL 语法。中文列名已自动处理，无需手动加反引号。<br>
                             先用"执行 SQL"预览结果，确认无误后再"应用结果"。
                         </div>
                         <div id="sqlResult" class="sql-result hidden"></div>
@@ -224,6 +315,7 @@
             </div>
         </div>
 
+        <!-- 3. 数据核验 -->
         <div class="card hidden" id="verifyCard">
             <h2><span class="icon">✅</span>3. 数据核验</h2>
             <div class="toolbar">
@@ -245,6 +337,7 @@
             <p id="verifyResult" style="color: #6b7280; font-size: 14px; margin-top: 12px;"></p>
         </div>
 
+        <!-- 4. 数据分析 -->
         <div class="card hidden" id="analysisCard">
             <h2><span class="icon">📈</span>4. 数据分析与可视化</h2>
             <div class="toolbar">
@@ -263,6 +356,7 @@
             <div id="chart"></div>
         </div>
 
+        <!-- 5. AI 报告 -->
         <div class="card hidden" id="reportCard">
             <h2><span class="icon">🤖</span>5. AI 智能报告生成</h2>
             <p style="color: #6b7280; font-size: 14px; margin-bottom: 16px;">基于清洗后的数据，自动生成专业的数据分析报告</p>
@@ -272,6 +366,330 @@
     </div>
 
     <script>
+        // ==================== 全局状态 ====================
+        let engine = null;
+        let originalData = [];
+        let currentHeaders = [];
+        let chartInstance = null;
+        let pendingRules = [];
+        let lastSQLResult = null;
+
+        // 导入向导状态
+        let workbookGlobal = null;
+        let selectedSheetName = null;
+        let selectedHeaderRow = 0;
+        let rawSheetData = [];
+        let detectedEncoding = 'utf-8';
+
+        // ==================== 智能导入模块 ====================
+        function handleFile(e) {
+            const file = e.target.files?.[0] || e;
+            if (!file) return;
+
+            document.getElementById('fileInfo').textContent = `正在读取: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+            document.getElementById('progressBar').classList.remove('hidden');
+            updateProgress(20);
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    updateProgress(50);
+
+                    // 检测编码
+                    detectedEncoding = detectEncoding(data);
+
+                    // 解析工作簿
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    workbookGlobal = workbook;
+                    updateProgress(80);
+
+                    const sheetNames = workbook.SheetNames;
+
+                    if (sheetNames.length === 1) {
+                        // 只有一个 Sheet，直接跳到表头检测
+                        selectedSheetName = sheetNames[0];
+                        selectSheet(sheetNames[0]);
+                    } else {
+                        // 多个 Sheet，显示选择界面
+                        showSheetSelection(sheetNames, workbook);
+                    }
+                    updateProgress(100);
+                } catch (err) {
+                    alert('读取失败: ' + err.message);
+                    resetUpload();
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 编码检测
+        function detectEncoding(bytes) {
+            // 检查 UTF-8 BOM
+            if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+                return 'utf-8-bom';
+            }
+            // 简单启发式：如果有很多连续的非 ASCII 字节，可能是 UTF-8
+            let utf8Score = 0, totalNonAscii = 0;
+            for (let i = 0; i < Math.min(bytes.length, 1000); i++) {
+                if (bytes[i] > 127) {
+                    totalNonAscii++;
+                    // UTF-8 多字节特征
+                    if ((bytes[i] & 0xE0) === 0xC0) utf8Score++;
+                    else if ((bytes[i] & 0xF0) === 0xE0) utf8Score++;
+                }
+            }
+            if (totalNonAscii > 0 && utf8Score / totalNonAscii > 0.5) return 'utf-8';
+            return 'latin-1'; // 默认回退
+        }
+
+        // 增强编码修复
+        function fixEncoding(str) {
+            if (typeof str !== 'string') return str;
+            if (!str) return str;
+
+            // 如果已经包含中文，说明编码正确
+            if (/[一-龥]/.test(str)) return str;
+
+            // 尝试 UTF-8 修复（Latin-1 误读为 UTF-8）
+            try {
+                const bytes = new Uint8Array(str.length);
+                for (let i = 0; i < str.length; i++) {
+                    bytes[i] = str.charCodeAt(i) & 0xFF;
+                }
+                const fixed = new TextDecoder('utf-8').decode(bytes);
+                if (/[一-龥]/.test(fixed)) return fixed;
+            } catch(e) {}
+
+            // 尝试 GBK 修复
+            try {
+                const bytes = new Uint8Array(str.length);
+                for (let i = 0; i < str.length; i++) {
+                    bytes[i] = str.charCodeAt(i) & 0xFF;
+                }
+                const fixed = new TextDecoder('gbk').decode(bytes);
+                if (/[一-龥]/.test(fixed)) return fixed;
+            } catch(e) {}
+
+            return str;
+        }
+
+        // 显示 Sheet 选择
+        function showSheetSelection(sheetNames, workbook) {
+            const container = document.getElementById('sheetList');
+            let html = '';
+            sheetNames.forEach((name, idx) => {
+                const sheet = workbook.Sheets[name];
+                const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:A1');
+                const rows = range.e.r - range.s.r + 1;
+                const cols = range.e.c - range.s.c + 1;
+                html += `<div class="sheet-card" onclick="selectSheet('${name}')" data-sheet="${name}">
+                    <div>
+                        <div class="sheet-name">${name}</div>
+                        <div class="sheet-info">${rows} 行 × ${cols} 列 ${idx === 0 ? '· 默认工作表' : ''}</div>
+                    </div>
+                    <span style="color:#9ca3af;font-size:20px;">→</span>
+                </div>`;
+            });
+            container.innerHTML = html;
+            switchStep('step-sheet');
+        }
+
+        // 选择 Sheet
+        function selectSheet(sheetName) {
+            selectedSheetName = sheetName;
+            const sheet = workbookGlobal.Sheets[sheetName];
+
+            // 读取原始数据（不指定 header，先拿到纯数组）
+            rawSheetData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+            if (rawSheetData.length < 2) {
+                alert('该工作表数据太少，至少需要 2 行');
+                return;
+            }
+
+            // 高亮选中的 sheet
+            document.querySelectorAll('.sheet-card').forEach(card => {
+                card.classList.toggle('selected', card.dataset.sheet === sheetName);
+            });
+
+            // 智能检测表头行
+            showHeaderDetection();
+        }
+
+        // 智能表头检测
+        function showHeaderDetection() {
+            const container = document.getElementById('headerOptions');
+            const maxCheckRows = Math.min(5, rawSheetData.length);
+
+            let html = '';
+            for (let i = 0; i < maxCheckRows; i++) {
+                const row = rawSheetData[i];
+                const isRecommended = i === detectHeaderRow(rawSheetData);
+                const previewCells = row.slice(0, 6).map(cell => {
+                    const val = fixEncoding(String(cell || '')).substring(0, 20);
+                    return val || '(空)';
+                }).join(' | ');
+
+                html += `<div class="header-row-option ${isRecommended ? 'selected' : ''}" onclick="selectHeaderRow(${i})" data-row="${i}">
+                    <input type="radio" name="headerRow" ${isRecommended ? 'checked' : ''}>
+                    <span class="row-num">第 ${i + 1} 行</span>
+                    <span style="color:#374151;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${previewCells}</span>
+                    ${isRecommended ? '<span class="badge badge-green" style="margin-left:8px;">✓ 推荐</span>' : ''}
+                </div>`;
+            }
+
+            html += `<div style="margin-top:12px;padding:10px;background:#fffbeb;border-radius:8px;border:1px solid #fde68a;font-size:12px;color:#92400e;">
+                💡 如果以上都不是表头，说明该文件可能没有表头行，系统将以第 1 行作为列名。
+            </div>`;
+
+            container.innerHTML = html;
+            selectedHeaderRow = detectHeaderRow(rawSheetData);
+            switchStep('step-header');
+        }
+
+        // 智能检测哪一行是表头
+        function detectHeaderRow(data) {
+            if (data.length < 2) return 0;
+
+            let bestRow = 0;
+            let bestScore = -1;
+
+            for (let i = 0; i < Math.min(5, data.length); i++) {
+                const row = data[i];
+                if (!row || row.length === 0) continue;
+
+                let score = 0;
+                const totalCells = row.length;
+                let textCount = 0, numCount = 0, emptyCount = 0;
+
+                for (let cell of row) {
+                    const val = String(cell || '').trim();
+                    if (!val) { emptyCount++; continue; }
+                    const num = Number(val);
+                    if (!isNaN(num) && val !== '') {
+                        numCount++;
+                    } else {
+                        textCount++;
+                        // 表头常见特征加分
+                        if (/[一-龥]/.test(val)) score += 2; // 中文
+                        if (/^(日期|时间|名称|编号|金额|数量|价格|姓名|地址|电话|邮箱|状态|类型|类别|部门|地区|城市|省份|国家)/.test(val)) score += 3;
+                        if (val.length < 15) score += 1; // 短文本更像列名
+                    }
+                }
+
+                // 表头通常是文本为主
+                if (textCount > numCount) score += 3;
+                // 空值不能太多
+                if (emptyCount / totalCells > 0.3) score -= 5;
+                // 第一行优先（如果没有明显特征）
+                if (i === 0) score += 1;
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestRow = i;
+                }
+            }
+
+            return bestRow;
+        }
+
+        // 选择表头行
+        function selectHeaderRow(rowIndex) {
+            selectedHeaderRow = rowIndex;
+            document.querySelectorAll('.header-row-option').forEach(opt => {
+                opt.classList.toggle('selected', parseInt(opt.dataset.row) === rowIndex);
+                const radio = opt.querySelector('input[type="radio"]');
+                if (radio) radio.checked = parseInt(opt.dataset.row) === rowIndex;
+            });
+        }
+
+        // 确认导入
+        function confirmImport() {
+            // 提取表头
+            const headerRow = rawSheetData[selectedHeaderRow];
+            currentHeaders = headerRow.map((h, idx) => {
+                const fixed = fixEncoding(String(h || '')).trim();
+                return fixed || `列${idx + 1}`;
+            });
+
+            // 提取数据（表头行之后）
+            const dataRows = rawSheetData.slice(selectedHeaderRow + 1);
+            originalData = dataRows.map(row => {
+                const obj = {};
+                currentHeaders.forEach((h, i) => {
+                    obj[h] = fixEncoding(row[i]);
+                });
+                return obj;
+            }).filter(row => Object.values(row).some(v => v !== '' && v !== null && v !== undefined));
+
+            if (originalData.length === 0) {
+                alert('未检测到有效数据行，请检查表头选择是否正确');
+                return;
+            }
+
+            // 初始化引擎
+            engine = new DataCleaningEngine(originalData, currentHeaders);
+
+            // 显示编码状态
+            const encBadge = document.getElementById('encodingStatus');
+            if (detectedEncoding === 'utf-8' || detectedEncoding === 'utf-8-bom') {
+                encBadge.className = 'encoding-badge encoding-ok';
+                encBadge.textContent = '✓ UTF-8 编码';
+            } else {
+                encBadge.className = 'encoding-badge encoding-warn';
+                encBadge.textContent = '⚠ 编码已自动修复';
+            }
+
+            document.getElementById('dataSummary').textContent = 
+                `Sheet: ${selectedSheetName} | 表头: 第${selectedHeaderRow + 1}行 | ${originalData.length} 行 × ${currentHeaders.length} 列`;
+
+            // 显示后续功能区域
+            showSections();
+            refreshAll();
+            populateSelects();
+
+            // 滚动到清洗区域
+            document.getElementById('cleanCard').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 步骤切换
+        function switchStep(stepId) {
+            document.querySelectorAll('.import-step').forEach(s => s.classList.remove('active'));
+            document.getElementById(stepId).classList.add('active');
+        }
+
+        function goBackToUpload() {
+            resetUpload();
+            switchStep('step-upload');
+        }
+
+        function goBackToSheet() {
+            if (workbookGlobal && workbookGlobal.SheetNames.length > 1) {
+                switchStep('step-sheet');
+            } else {
+                goBackToUpload();
+            }
+        }
+
+        function goBackToHeader() {
+            switchStep('step-header');
+        }
+
+        function resetUpload() {
+            workbookGlobal = null;
+            selectedSheetName = null;
+            selectedHeaderRow = 0;
+            rawSheetData = [];
+            document.getElementById('fileInput').value = '';
+            document.getElementById('progressBar').classList.add('hidden');
+            document.getElementById('progressFill').style.width = '0%';
+        }
+
+        function updateProgress(pct) {
+            document.getElementById('progressFill').style.width = pct + '%';
+        }
+
         // ==================== 数据清洗引擎 ====================
         class DataCleaningEngine {
             constructor(data, headers) {
@@ -280,7 +698,6 @@
                 this.headers = [...headers];
                 this.history = [];
                 this.historyIndex = -1;
-                this.rules = [];
                 this.beforeSnapshot = JSON.parse(JSON.stringify(data));
                 this.saveState();
             }
@@ -292,19 +709,9 @@
             }
             undo() { if (this.historyIndex > 0) { this.historyIndex--; this.data = JSON.parse(JSON.stringify(this.history[this.historyIndex])); } return this.data; }
             redo() { if (this.historyIndex < this.history.length - 1) { this.historyIndex++; this.data = JSON.parse(JSON.stringify(this.history[this.historyIndex])); } return this.data; }
-            reset() { this.data = JSON.parse(JSON.stringify(this.originalData)); this.rules = []; this.beforeSnapshot = JSON.parse(JSON.stringify(this.originalData)); this.history = []; this.historyIndex = -1; this.saveState(); return this.data; }
+            reset() { this.data = JSON.parse(JSON.stringify(this.originalData)); this.beforeSnapshot = JSON.parse(JSON.stringify(this.originalData)); this.history = []; this.historyIndex = -1; this.saveState(); return this.data; }
             setData(newData) { this.beforeSnapshot = JSON.parse(JSON.stringify(this.data)); this.data = JSON.parse(JSON.stringify(newData)); this.saveState(); }
-            getColumnStats(column) {
-                const values = this.data.map(r => r[column]).filter(v => v !== '' && v !== null && v !== undefined);
-                const nums = values.map(v => Number(v)).filter(v => !isNaN(v));
-                const sorted = nums.length ? [...nums].sort((a,b) => a-b) : [];
-                const mean = nums.length ? nums.reduce((a,b) => a+b, 0) / nums.length : null;
-                const variance = nums.length ? nums.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / nums.length : null;
-                return { count: this.data.length, valid: values.length, missing: this.data.length - values.length, missingRate: ((this.data.length - values.length) / this.data.length * 100).toFixed(1), unique: [...new Set(values)].length, numeric: nums.length, min: nums.length ? sorted[0] : null, max: nums.length ? sorted[sorted.length-1] : null, mean: mean ? mean.toFixed(2) : null, median: nums.length ? this.percentile(sorted, 0.5) : null, std: variance ? Math.sqrt(variance).toFixed(2) : null, q1: nums.length ? this.percentile(sorted, 0.25) : null, q3: nums.length ? this.percentile(sorted, 0.75) : null };
-            }
-            percentile(sortedArr, p) { const idx = (sortedArr.length - 1) * p; const lower = Math.floor(idx); const upper = Math.ceil(idx); if (lower === upper) return sortedArr[lower]; return sortedArr[lower] * (upper - idx) + sortedArr[upper] * (idx - lower); }
             executeRule(rule) {
-                const beforeCount = this.data.length;
                 switch(rule.type) {
                     case 'removeDuplicates': this.removeDuplicates(rule.columns); break;
                     case 'removeEmptyRows': this.removeEmptyRows(rule.columns); break;
@@ -317,7 +724,6 @@
                     case 'standardize': this.standardize(rule.column, rule.format); break;
                 }
                 this.saveState();
-                return { beforeCount, afterCount: this.data.length };
             }
             removeDuplicates(columns) { const cols = columns && columns.length ? columns : this.headers; const seen = new Set(); this.data = this.data.filter(row => { const key = cols.map(c => String(row[c] || '')).join('||'); if (seen.has(key)) return false; seen.add(key); return true; }); }
             removeEmptyRows(columns) { const cols = columns && columns.length ? columns : this.headers; this.data = this.data.filter(row => cols.some(c => { const v = row[c]; return v !== undefined && v !== null && v !== ''; })); }
@@ -339,6 +745,7 @@
                 }
                 this.data.forEach(r => { if (r[column] === '' || r[column] === null || r[column] === undefined) { r[column] = value; } });
             }
+            percentile(sortedArr, p) { const idx = (sortedArr.length - 1) * p; const lower = Math.floor(idx); const upper = Math.ceil(idx); if (lower === upper) return sortedArr[lower]; return sortedArr[lower] * (upper - idx) + sortedArr[upper] * (idx - lower); }
             removeOutliers(column, method) {
                 const nums = this.data.map(r => Number(r[column])).filter(v => !isNaN(v));
                 if (!nums.length) return;
@@ -377,15 +784,9 @@
             }
         }
 
-        // ==================== 全局状态 ====================
-        let engine = null;
-        let originalData = [];
-        let currentHeaders = [];
-        let chartInstance = null;
-        let pendingRules = [];
-        let lastSQLResult = null;
-
-        // ==================== 标签页切换 ====================
+        // ==================== UI 函数 ====================
+        function showSections() { ['cleanCard', 'verifyCard', 'analysisCard', 'reportCard'].forEach(id => document.getElementById(id).classList.remove('hidden')); }
+        function populateSelects() { ['verifyColumn', 'xAxis', 'yAxis'].forEach(id => { const sel = document.getElementById(id); sel.innerHTML = currentHeaders.map(h => `<option value="${h}">${h}</option>`).join(''); }); }
         function switchTab(tab) {
             document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
@@ -394,39 +795,7 @@
             if (tab === 'sql') refreshSQLStats();
         }
 
-        // ==================== 文件上传 ====================
-        function handleFile(e) {
-            const file = e.target.files?.[0] || e;
-            if (!file) return;
-            document.getElementById('fileInfo').textContent = `正在读取: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
-            document.getElementById('progressBar').classList.remove('hidden');
-            updateProgress(30);
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-                    if (jsonData.length < 2) { alert('文件数据太少'); return; }
-                    function fixEncoding(str) { if (typeof str !== 'string') return str; try { const bytes = new Uint8Array(str.length); for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i) & 0xFF; const fixed = new TextDecoder('utf-8').decode(bytes); if (/[\u4e00-\u9fa5]/.test(fixed)) return fixed; } catch(e) {} return str; }
-                    currentHeaders = jsonData[0].map(h => fixEncoding(String(h).trim()));
-                    originalData = jsonData.slice(1).map(row => { const obj = {}; currentHeaders.forEach((h, i) => obj[h] = fixEncoding(row[i])); return obj; });
-                    updateProgress(100);
-                    engine = new DataCleaningEngine(originalData, currentHeaders);
-                    showSections();
-                    refreshAll();
-                    populateSelects();
-                    document.getElementById('fileInfo').innerHTML = `✅ <strong>${file.name}</strong> | ${originalData.length} 行 × ${currentHeaders.length} 列 | <span class="badge badge-green">导入成功</span>`;
-                } catch (err) { alert('读取失败: ' + err.message); }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-        function updateProgress(pct) { document.getElementById('progressFill').style.width = pct + '%'; }
-        function showSections() { ['cleanCard', 'verifyCard', 'analysisCard', 'reportCard'].forEach(id => document.getElementById(id).classList.remove('hidden')); }
-        function populateSelects() { ['verifyColumn', 'xAxis', 'yAxis'].forEach(id => { const sel = document.getElementById(id); sel.innerHTML = currentHeaders.map(h => `<option value="${h}">${h}</option>`).join(''); }); }
-
-        // ==================== 规则引擎 UI ====================
+        // 规则引擎
         function onRuleTypeChange() {
             const type = document.getElementById('ruleType').value;
             const container = document.getElementById('ruleParams');
@@ -497,15 +866,9 @@
         function resetAll() { if (!engine) return; engine.reset(); pendingRules = []; renderRuleList(); refreshAll(); }
         function refreshAll() { showData(); updateCleanStats(); updateCompareStats(); refreshSQLStats(); }
 
-        // ==================== AlaSQL 查询（修复中文列名）====================
-        function quoteCol(col) {
-            // 如果列名包含中文，用反引号包裹
-            if (/[一-龥]/.test(col)) return '`' + col + '`';
-            return col;
-        }
-
+        // SQL
+        function quoteCol(col) { if (/[一-龥]/.test(col)) return '`' + col + '`'; return col; }
         function setSQL(sql) {
-            // 自动把模板中的"列名1""列名2"替换成实际的列名（带反引号）
             let replaced = sql;
             if (currentHeaders.length > 0) {
                 replaced = replaced.replace(/列名1/g, quoteCol(currentHeaders[0]));
@@ -513,49 +876,34 @@
             }
             document.getElementById('sqlEditor').value = replaced;
         }
-
         function sanitizeSQL(sql) {
-            // 自动给未加引号的中文标识符加反引号，解决 AlaSQL 中文解析问题
             let sanitized = sql;
-            // 保护单引号字符串
             const strings = [];
             sanitized = sanitized.replace(/'[^']*'/g, match => { strings.push(match); return `__STR${strings.length-1}__`; });
-            // 保护双引号字符串
             sanitized = sanitized.replace(/"[^"]*"/g, match => { strings.push(match); return `__STR${strings.length-1}__`; });
-            // 保护反引号包裹的内容
             const backticks = [];
             sanitized = sanitized.replace(/`[^`]*`/g, match => { backticks.push(match); return `__BT${backticks.length-1}__`; });
-            // 给中文标识符加反引号（但排除 SQL 关键字）
             const keywords = ['SELECT','FROM','WHERE','AND','OR','NOT','NULL','IS','IN','LIKE','BETWEEN','ORDER','BY','GROUP','HAVING','LIMIT','OFFSET','ASC','DESC','AS','DISTINCT','COUNT','SUM','AVG','MAX','MIN','JOIN','LEFT','RIGHT','INNER','OUTER','ON','UNION','ALL','INSERT','INTO','VALUES','UPDATE','SET','DELETE','CREATE','TABLE','DROP','ALTER','INDEX','PRIMARY','KEY','FOREIGN','REFERENCES','DEFAULT','AUTO_INCREMENT','UNIQUE','CHECK','CASE','WHEN','THEN','ELSE','END','IF','CAST','CONVERT','TRUE','FALSE'];
             const keywordSet = new Set(keywords.map(k => k.toLowerCase()));
             sanitized = sanitized.replace(/([一-龥][一-龥\w]*)/g, (match) => {
                 if (keywordSet.has(match.toLowerCase())) return match;
                 return '`' + match + '`';
             });
-            // 恢复保护的内容
             backticks.forEach((match, i) => { sanitized = sanitized.replace(`__BT${i}__`, match); });
             strings.forEach((match, i) => { sanitized = sanitized.replace(`__STR${i}__`, match); });
             return sanitized;
         }
-
         function runSQLQuery() {
             if (!engine) { alert('请先导入数据'); return; }
             let sql = document.getElementById('sqlEditor').value.trim();
             if (!sql) { alert('请输入 SQL 语句'); return; }
-            // 自动处理中文列名
             sql = sanitizeSQL(sql);
-
             const resultEl = document.getElementById('sqlResult');
             try {
-                // 将当前数据注册为 AlaSQL 的 data 表
                 alasql.tables = alasql.tables || {};
                 alasql.tables.data = { data: engine.data };
-
-                // 执行 SQL
                 const result = alasql(sql, [engine.data]);
                 lastSQLResult = result;
-
-                // 显示结果
                 showSQLTable(result);
                 resultEl.className = 'sql-result success';
                 resultEl.textContent = `✅ 查询成功，返回 ${Array.isArray(result) ? result.length : 1} 条结果`;
@@ -571,20 +919,16 @@
                 document.getElementById('sqlResultCount').textContent = '';
             }
         }
-
         function showSQLTable(data) {
             const table = document.getElementById('sqlTable');
             if (!Array.isArray(data) || !data.length) { table.innerHTML = '<tr><td style="text-align:center;color:#9ca3af;padding:20px;">无数据</td></tr>'; return; }
             const cols = Object.keys(data[0]);
             let html = '<thead><tr>' + cols.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
-            data.slice(0, 100).forEach(row => {
-                html += '<tr>' + cols.map(c => `<td>${row[c] !== undefined && row[c] !== null ? row[c] : ''}</td>`).join('') + '</tr>';
-            });
+            data.slice(0, 100).forEach(row => { html += '<tr>' + cols.map(c => `<td>${row[c] !== undefined && row[c] !== null ? row[c] : ''}</td>`).join('') + '</tr>'; });
             if (data.length > 100) html += `<tr><td colspan="${cols.length}" style="text-align:center;color:#9ca3af;padding:16px;">... 还有 ${data.length - 100} 行 ...</td></tr>`;
             html += '</tbody>';
             table.innerHTML = html;
         }
-
         function applySQLResult() {
             if (!lastSQLResult) { alert('请先执行 SQL 查询'); return; }
             if (!Array.isArray(lastSQLResult)) { alert('当前 SQL 结果不是数据表，无法应用'); return; }
@@ -595,7 +939,6 @@
             refreshAll();
             alert(`✅ 已应用 SQL 结果，当前 ${lastSQLResult.length} 行 × ${currentHeaders.length} 列`);
         }
-
         function refreshSQLStats() {
             if (!engine) return;
             const beforeHtml = `<div class="stats" style="grid-template-columns:1fr 1fr;gap:8px;"><div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;">${engine.data.length}</div><div class="stat-label">行数</div></div><div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;">${currentHeaders.length}</div><div class="stat-label">列数</div></div></div>`;
@@ -606,7 +949,7 @@
             document.getElementById('sqlAfterStats').innerHTML = afterHtml;
         }
 
-        // ==================== 数据展示 ====================
+        // 数据展示
         function showData() {
             const table = document.getElementById('dataTable');
             const showDiff = document.getElementById('showDiff').checked;
@@ -653,7 +996,7 @@
             document.getElementById('afterStats').innerHTML = afterHtml;
         }
 
-        // ==================== 数据核验 ====================
+        // 核验
         function runVerification() {
             const col = document.getElementById('verifyColumn').value;
             const rule = document.getElementById('verifyRule').value;
@@ -683,7 +1026,7 @@
         }
         function clearVerify() { document.querySelectorAll('.error-cell').forEach(c => c.classList.remove('error-cell')); document.getElementById('verifyResult').textContent = ''; }
 
-        // ==================== 数据分析图表 ====================
+        // 图表
         function drawChart() {
             const xCol = document.getElementById('xAxis').value;
             const yCol = document.getElementById('yAxis').value;
@@ -704,7 +1047,7 @@
             chartInstance.setOption(option);
         }
 
-        // ==================== AI 报告 ====================
+        // AI 报告 - 前端直连 GLM（workers.dev 被墙）
         async function generateReport() {
             const btn = document.getElementById('reportBtn');
             const content = document.getElementById('reportContent');
@@ -722,30 +1065,30 @@
             const prompt = `你是一位资深数据分析师。请基于以下数据生成一份专业的中文数据分析报告，包含：1.数据概览 2.关键发现 3.数据质量评估 4.建议\n\n数据概览：${JSON.stringify(summary)}\n统计信息：${JSON.stringify(stats)}`;
             try {
                 const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer 3f777fa9d3ab45508cdded149c09532b.79abtBV4C7TMBnzg'
-    },
-    body: JSON.stringify({
-        model: 'glm-5.2',
-        messages: [
-            { role: 'system', content: '你是一位专业的数据分析师，擅长从数据中发现洞察并生成结构化报告。' },
-            { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 4000
-    })
-});
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer 3f777fa9d3ab45508cdded149c09532b.79abtBV4C7TMBnzg'
+                    },
+                    body: JSON.stringify({
+                        model: 'glm-5.2',
+                        messages: [
+                            { role: 'system', content: '你是一位专业的数据分析师，擅长从数据中发现洞察并生成结构化报告。' },
+                            { role: 'user', content: prompt }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 4000
+                    })
+                });
                 const result = await response.json();
                 const text = result.choices?.[0]?.message?.content || result.report || JSON.stringify(result, null, 2);
                 content.innerHTML = `<div class="report"><div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:16px;">🤖 AI 智能分析报告</div>${text.replace(/\n/g, '<br>')}</div>`;
             } catch (err) {
-                content.innerHTML = `<div class="report" style="color:#dc2626;">生成失败: ${err.message}<br>请检查 Worker 地址是否正确配置</div>`;
+                content.innerHTML = `<div class="report" style="color:#dc2626;">生成失败: ${err.message}</div>`;
             } finally { btn.disabled = false; }
         }
 
-        // ==================== 拖拽上传 ====================
+        // 拖拽上传
         const dropZone = document.getElementById('dropZone');
         ['dragover','dragenter'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.add('dragover'); }));
         ['dragleave','drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.remove('dragover'); if (e === 'drop' && ev.dataTransfer.files.length) handleFile(ev.dataTransfer.files[0]); }));
