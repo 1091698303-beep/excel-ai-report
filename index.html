@@ -3,42 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel 智能分析与 AI 报告生成平台 - Pro版</title>
-    <脚本 源="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></脚本>
+    <title>Excel 智能分析与 AI 报告生成平台 - AlaSQL Pro版</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alasql@4"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; padding: 20px; color: #1f2937; }
         .container { max-width: 1480px; margin: 0 auto; }
         h1 { text-align: center; color: #111827; margin-bottom: 8px; font-size: 28px; font-weight: 700; }
-        . { 文本对齐: 居中; 颜色: #6b7280; 字体大小: 14px; 底部边距
-        .  背景: 白色; 圆角半径: 16px; 内边距: 28px; 下边距: 24px; 阴影: 0 1px 3px rgba(0,0,0,0.08); 边框: 1px 实心 #e5e7eb; }
-        .卡片 h2 { 颜色: #111827; 底部边距: 20px; 字体大小: 18px; 字体粗细: 600; 显示方式: 弹性布局; 对齐方式: 居中; 间距: 10px; }
-        . 图标 { 宽度: ; 高度: 32像素; 圆角半径: 8像素; 背景: #eff6ff; 颜色: #2563eb; 显示: 弹性盒子; 对齐项目: 居中; justify-content: 居中; 字体大小: 16像素
+        .subtitle { text-align: center; color: #6b7280; font-size: 14px; margin-bottom: 32px; }
+        .card { background: white; border-radius: 16px; padding: 28px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
+        .card h2 { color: #111827; margin-bottom: 20px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .card h2 .icon { width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 16px; }
 
-        /* 上传区域 */
-        . { 边框: 2像素 虚线 #d1d5db; 圆角: 12像素; 内边距: 48像素; 文本对齐: 居中; 光标: 指针; 过渡: 所有属性 0.3s; 
-        .:悬停 { 背景: #eff6ff; 边框颜色
+        .upload-area { border: 2px dashed #d1d5db; border-radius: 12px; padding: 48px; text-align: center; cursor: pointer; transition: all 0.3s; background: #fafafa; }
+        .upload-area:hover { background: #eff6ff; border-color: #3b82f6; }
         .upload-area.dragover { background: #dbeafe; border-color: #2563eb; }
-        .上传区域 输入 { 显示: 无; }
-        .上传图标 { 字体大小: 56像素; 底部边距: 12像素; }
-        .上传文本 { 字体大小: 16px; 颜色: #374151; 字体粗细: 500; }
-        . { 颜色: #9ca3af; 字体大小: 13像素; 上边距
+        .upload-area input { display: none; }
+        .upload-icon { font-size: 56px; margin-bottom: 12px; }
+        .upload-text { font-size: 16px; color: #374151; font-weight: 500; }
+        .upload-hint { color: #9ca3af; font-size: 13px; margin-top: 8px; }
 
-        /* 按钮 */
-        .按钮 { 背景: #2563eb; 颜色: 白色; 边框: 无; 内边距: 10像素 20像素; 圆角: 8像素; 光标: 指针; 字体大小: 14像素; 字体粗细: 500; 过渡: 全部 0.2秒; 显示: 行内弹性盒子; 对齐方式: 居中; 间距: 6像素; }
-        .:  背景: #1d4ed8; 变换: (像素); box-shadow: 0 4像素 12像素
-        .按钮:激活 { 变换: 平移Y轴(0); }
-        .{ 背景: #d1d5db; 光标: ; 变换: 无; 盒阴影: 无
-        .btn-secondary { 背景: #f3f4f6; 颜色: #374151; 边框: 1像素 实线 #d1d5db; }
+        .btn { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
+        .btn:active { transform: translateY(0); }
+        .btn:disabled { background: #d1d5db; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
         .btn-secondary:hover { background: #e5e7eb; }
-        .btn-danger { 背景: #fef2f2; 颜色: #dc2626; 边框: 1px 实线 #fecaca; }
+        .btn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
         .btn-danger:hover { background: #fee2e2; }
         .btn-success { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
         .btn-success:hover { background: #d1fae5; }
         .btn-sm { padding: 6px 14px; font-size: 13px; }
+        .btn-purple { background: #f3e8ff; color: #7c3aed; border: 1px solid #ddd6fe; }
+        .btn-purple:hover { background: #ede9fe; }
 
-        /* 表格 */
         .table-wrap { max-height: 360px; overflow: auto; border-radius: 10px; border: 1px solid #e5e7eb; margin-top: 16px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }
@@ -48,7 +48,6 @@
         .error-cell { background: #fef2f2 !important; color: #991b1b; font-weight: 500; }
         .changed-cell { background: #ecfdf5 !important; color: #065f46; }
 
-        /* 统计卡片 */
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-top: 16px; }
         .stat-item { background: #f9fafb; padding: 18px; border-radius: 10px; text-align: center; border: 1px solid #e5e7eb; transition: all 0.2s; }
         .stat-item:hover { border-color: #bfdbfe; background: #eff6ff; }
@@ -58,18 +57,18 @@
         .stat-delta.up { color: #dc2626; }
         .stat-delta.down { color: #059669; }
 
-        /* 清洗引擎 */
-        .clean-layout { display: grid; grid-template-columns: 320px 1fr; gap: 24px; }
+        .clean-layout { display: grid; grid-template-columns: 360px 1fr; gap: 24px; }
         @media (max-width: 1024px) { .clean-layout { grid-template-columns: 1fr; } }
 
         .rule-panel { background: #f9fafb; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; }
         .rule-panel h3 { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
         .form-group { margin-bottom: 14px; }
         .form-group label { display: block; font-size: 12px; font-weight: 600; color: #4b5563; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
-        .form-group select, .form-group input { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 13px; background: white; transition: all 0.2s; }
-        .form-group select:focus, .form-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .form-group select, .form-group input, .form-group textarea { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 13px; background: white; transition: all 0.2s; font-family: inherit; }
+        .form-group select:focus, .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .form-group textarea { min-height: 120px; resize: vertical; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; line-height: 1.6; }
 
-        .rule-list { margin-top: 16px; }
+        .rule-list { margin-top: 16px; max-height: 200px; overflow: auto; }
         .rule-tag { display: flex; align-items: center; justify-content: space-between; background: white; padding: 10px 14px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 8px; font-size: 13px; transition: all 0.2s; }
         .rule-tag:hover { border-color: #bfdbfe; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
         .rule-tag .rule-name { font-weight: 500; color: #374151; }
@@ -79,17 +78,14 @@
 
         .action-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
 
-        /* 对比视图 */
         .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px; }
         .compare-box { background: #f9fafb; border-radius: 10px; padding: 16px; border: 1px solid #e5e7eb; }
         .compare-box h4 { font-size: 13px; font-weight: 600; color: #6b7280; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
         .compare-box.before h4 { color: #dc2626; }
         .compare-box.after h4 { color: #059669; }
 
-        /* 图表 */
         #chart { width: 100%; height: 420px; margin-top: 20px; }
 
-        /* 报告 */
         .report { background: #f8fafc; padding: 24px; border-radius: 12px; line-height: 1.8; white-space: pre-wrap; border: 1px solid #e2e8f0; font-size: 14px; color: #334155; }
         .report h3 { color: #1e293b; margin: 16px 0 8px; font-size: 16px; }
         .report ul { margin-left: 20px; }
@@ -104,27 +100,38 @@
         .badge-green { background: #ecfdf5; color: #059669; }
         .badge-red { background: #fef2f2; color: #dc2626; }
         .badge-gray { background: #f3f4f6; color: #6b7280; }
+        .badge-purple { background: #f3e8ff; color: #7c3aed; }
 
         .progress { width: 100%; height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 12px; overflow: hidden; }
         .progress-bar { height: 100%; background: #2563eb; width: 0%; transition: width 0.4s ease; }
 
-        .section-tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; }
-        .section-tab { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; color: #6b7280; transition: all 0.2s; border: none; background: none; }
-        .section-tab:hover { color: #2563eb; background: #eff6ff; }
-        .section-tab.active { color: #2563eb; background: #eff6ff; }
+        .section-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 0; }
+        .section-tab { padding: 10px 20px; border-radius: 8px 8px 0 0; font-size: 14px; font-weight: 500; cursor: pointer; color: #6b7280; transition: all 0.2s; border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .section-tab:hover { color: #2563eb; background: #f9fafb; }
+        .section-tab.active { color: #2563eb; background: #eff6ff; border-bottom-color: #2563eb; }
 
         .toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
         .toolbar-sep { width: 1px; height: 24px; background: #e5e7eb; margin: 0 4px; }
 
         .preview-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4b5563; cursor: pointer; }
         .preview-toggle input { accent-color: #2563eb; }
+
+        .sql-hint { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px; font-size: 12px; color: #0369a1; margin-top: 10px; line-height: 1.6; }
+        .sql-hint code { background: #e0f2fe; padding: 1px 4px; border-radius: 3px; font-family: monospace; }
+
+        .template-btn { display: inline-block; padding: 4px 10px; border-radius: 6px; background: #f3f4f6; border: 1px solid #e5e7eb; font-size: 12px; color: #4b5563; cursor: pointer; margin: 0 4px 6px 0; transition: all 0.15s; }
+        .template-btn:hover { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
+
+        .sql-result { background: #f9fafb; border-radius: 8px; padding: 12px; border: 1px solid #e5e7eb; margin-top: 12px; font-size: 12px; max-height: 150px; overflow: auto; }
+        .sql-result.success { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+        .sql-result.error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
     </style>
 <base target="_blank">
 </head>
 <body>
     <div class="container">
         <h1>📊 Excel 智能分析与 AI 报告生成平台</h1>
-        <p class="subtitle">支持 Excel 导入 · 智能数据清洗 · 规则引擎 · AI 报告生成</p>
+        <p class="subtitle">支持 Excel 导入 · 智能数据清洗 · AlaSQL 引擎 · AI 报告生成</p>
 
         <!-- 1. 文件上传 -->
         <div class="card" id="uploadCard">
@@ -139,74 +146,106 @@
             <p id="fileInfo" style="margin-top: 12px; color: #6b7280; font-size: 13px;"></p>
         </div>
 
-        <!-- 2. 数据清洗（升级版） -->
+        <!-- 2. 数据清洗（AlaSQL + 规则引擎） -->
         <div class="card hidden" id="cleanCard">
-            <h2><span class="icon">🧹</span>2. 智能数据清洗 <span class="badge badge-blue">Pro</span></h2>
+            <h2><span class="icon">🧹</span>2. 智能数据清洗 <span class="badge badge-purple">AlaSQL</span></h2>
 
             <div class="stats" id="cleanStats"></div>
 
-            <div class="clean-layout" style="margin-top: 24px;">
-                <!-- 左侧：规则面板 -->
-                <div class="rule-panel">
-                    <h3>⚙️ 添加清洗规则</h3>
+            <div class="section-tabs" style="margin-top: 20px;">
+                <button class="section-tab active" onclick="switchTab('rule')" id="tab-rule">⚙️ 规则引擎</button>
+                <button class="section-tab" onclick="switchTab('sql')" id="tab-sql">🗄️ SQL 查询清洗 (AlaSQL)</button>
+            </div>
 
-                    <div class="form-group">
-                        <label>规则类型</label>
-                        <select id="ruleType" onchange="onRuleTypeChange()">
-                            <option value="">选择规则...</option>
-                            <option value="removeDuplicates">🔄 删除重复行</option>
-                            <option value="removeEmptyRows">🗑️ 删除空行</option>
-                            <option value="trim">✂️ 去除首尾空格</option>
-                            <option value="convertType">🔢 智能类型转换</option>
-                            <option value="fillMissing">💧 缺失值填充</option>
-                            <option value="removeOutliers">📉 异常值剔除</option>
-                            <option value="replace">🔍 查找替换</option>
-                            <option value="filter">🔎 条件过滤</option>
-                            <option value="standardize">📐 数据标准化</option>
-                        </select>
+            <!-- 规则引擎面板 -->
+            <div id="panel-rule">
+                <div class="clean-layout">
+                    <div class="rule-panel">
+                        <h3>添加清洗规则</h3>
+                        <div class="form-group">
+                            <label>规则类型</label>
+                            <select id="ruleType" onchange="onRuleTypeChange()">
+                                <option value="">选择规则...</option>
+                                <option value="removeDuplicates">🔄 删除重复行</option>
+                                <option value="removeEmptyRows">🗑️ 删除空行</option>
+                                <option value="trim">✂️ 去除首尾空格</option>
+                                <option value="convertType">🔢 智能类型转换</option>
+                                <option value="fillMissing">💧 缺失值填充</option>
+                                <option value="removeOutliers">📉 异常值剔除</option>
+                                <option value="replace">🔍 查找替换</option>
+                                <option value="filter">🔎 条件过滤</option>
+                                <option value="standardize">📐 数据标准化</option>
+                            </select>
+                        </div>
+                        <div id="ruleParams"></div>
+                        <button class="btn btn-sm" style="width: 100%; margin-top: 8px;" onclick="addRule()" id="addRuleBtn" disabled>➕ 添加规则</button>
+                        <div class="action-bar">
+                            <button class="btn btn-sm btn-success" onclick="executeRules()">▶️ 执行所有规则</button>
+                            <button class="btn btn-sm btn-secondary" onclick="engine.undo(); refreshAll();">↩️ 撤销</button>
+                            <button class="btn btn-sm btn-secondary" onclick="engine.redo(); refreshAll();">↪️ 重做</button>
+                            <button class="btn btn-sm btn-danger" onclick="resetAll()">🔄 重置</button>
+                        </div>
+                        <div class="rule-list" id="ruleList">
+                            <div style="color: #9ca3af; font-size: 12px; text-align: center; padding: 20px;">暂无规则，请从上方添加</div>
+                        </div>
                     </div>
-
-                    <div id="ruleParams"></div>
-
-                    <button class="btn btn-sm" style="width: 100%; margin-top: 8px;" onclick="addRule()" id="addRuleBtn" disabled>
-                        ➕ 添加规则
-                    </button>
-
-                    <div class="action-bar">
-                        <button class="btn btn-sm btn-success" onclick="executeRules()">▶️ 执行所有规则</button>
-                        <button class="btn btn-sm btn-secondary" onclick="engine.undo(); refreshAll();">↩️ 撤销</button>
-                        <button class="btn btn-sm btn-secondary" onclick="engine.redo(); refreshAll();">↪️ 重做</button>
-                        <button class="btn btn-sm btn-danger" onclick="resetAll()">🔄 重置</button>
-                    </div>
-
-                    <div class="rule-list" id="ruleList">
-                        <div style="color: #9ca3af; font-size: 12px; text-align: center; padding: 20px;">暂无规则，请从上方添加</div>
+                    <div>
+                        <div class="toolbar">
+                            <span class="preview-toggle"><input type="checkbox" id="showDiff" onchange="showData()"><label for="showDiff">高亮变更单元格</label></span>
+                            <div class="toolbar-sep"></div>
+                            <span id="rowCountDisplay" style="font-size: 13px; color: #6b7280;"></span>
+                        </div>
+                        <div class="table-wrap"><table id="dataTable"></table></div>
+                        <div class="compare-grid" id="compareSection" style="margin-top: 20px;">
+                            <div class="compare-box before"><h4>🔴 清洗前</h4><div id="beforeStats"></div></div>
+                            <div class="compare-box after"><h4>🟢 清洗后</h4><div id="afterStats"></div></div>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- 右侧：数据预览 -->
-                <div>
-                    <div class="toolbar">
-                        <span class="preview-toggle">
-                            <input type="checkbox" id="showDiff" onchange="showData()">
-                            <label for="showDiff">高亮变更单元格</label>
-                        </span>
-                        <div class="toolbar-sep"></div>
-                        <span id="rowCountDisplay" style="font-size: 13px; color: #6b7280;"></span>
-                    </div>
-                    <div class="table-wrap">
-                        <table id="dataTable"></table>
-                    </div>
-
-                    <!-- 清洗前后对比 -->
-                    <div class="compare-grid" id="compareSection" style="margin-top: 20px;">
-                        <div class="compare-box before">
-                            <h4>🔴 清洗前</h4>
-                            <div id="beforeStats"></div>
+            <!-- AlaSQL 面板 -->
+            <div id="panel-sql" class="hidden">
+                <div class="clean-layout">
+                    <div class="rule-panel">
+                        <h3>🗄️ AlaSQL 查询编辑器</h3>
+                        <div class="form-group">
+                            <label>SQL 语句 <span style="font-weight:normal;color:#9ca3af;">(数据表名为 data)</span></label>
+                            <textarea id="sqlEditor" placeholder="SELECT * FROM data WHERE ...">SELECT * FROM data LIMIT 10</textarea>
                         </div>
-                        <div class="compare-box after">
-                            <h4>🟢 清洗后</h4>
-                            <div id="afterStats"></div>
+                        <div style="margin-bottom: 12px;">
+                            <label style="font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 6px; display: block;">常用模板（点击填入）</label>
+                            <span class="template-btn" onclick="setSQL('SELECT * FROM data LIMIT 10')">查看前10行</span>
+                            <span class="template-btn" onclick="setSQL('SELECT DISTINCT * FROM data')">去重</span>
+                            <span class="template-btn" onclick="setSQL('SELECT * FROM data WHERE 列名 IS NOT NULL')">过滤空值</span>
+                            <span class="template-btn" onclick="setSQL('SELECT 列名, COUNT(*) AS cnt FROM data GROUP BY 列名')">分组统计</span>
+                            <span class="template-btn" onclick="setSQL('SELECT * FROM data ORDER BY 列名 DESC LIMIT 20')">Top 20</span>
+                            <span class="template-btn" onclick="setSQL('SELECT AVG(列名) AS avg, MIN(列名) AS min, MAX(列名) AS max FROM data')">聚合统计</span>
+                            <span class="template-btn" onclick="setSQL('SELECT * FROM data WHERE 列名 > 100 AND 列名 < 500')">范围筛选</span>
+                            <span class="template-btn" onclick="setSQL('SELECT 列名1, 列名2 FROM data WHERE 列名 LIKE "%关键字%"')">模糊查询</span>
+                        </div>
+                        <div class="action-bar" style="border-top: none; padding-top: 0;">
+                            <button class="btn btn-sm btn-purple" onclick="runSQLQuery()">▶️ 执行 SQL</button>
+                            <button class="btn btn-sm btn-success" onclick="applySQLResult()">✅ 应用结果到数据</button>
+                            <button class="btn btn-sm btn-secondary" onclick="engine.undo(); refreshAll();">↩️ 撤销</button>
+                            <button class="btn btn-sm btn-danger" onclick="resetAll()">🔄 重置</button>
+                        </div>
+                        <div class="sql-hint">
+                            <strong>💡 提示：</strong>AlaSQL 支持完整 SQL 语法：<code>SELECT</code> <code>WHERE</code> <code>GROUP BY</code> <code>ORDER BY</code> <code>JOIN</code> <code>UNION</code> 等。<br>
+                            列名含中文或特殊字符时请用反引号包裹：<code>SELECT \`销售额\` FROM data</code><br>
+                            先用"执行 SQL"预览结果，确认无误后再"应用结果"。
+                        </div>
+                        <div id="sqlResult" class="sql-result hidden"></div>
+                    </div>
+                    <div>
+                        <div class="toolbar">
+                            <span style="font-size: 13px; color: #6b7280; font-weight: 600;">SQL 查询结果预览</span>
+                            <span id="sqlResultCount" style="font-size: 13px; color: #6b7280;"></span>
+                        </div>
+                        <div class="table-wrap"><table id="sqlTable"></table></div>
+                        <div class="compare-grid" style="margin-top: 20px;">
+                            <div class="compare-box before"><h4>🔴 原始数据</h4><div id="sqlBeforeStats"></div></div>
+                            <div class="compare-box after"><h4>🟢 SQL 结果</h4><div id="sqlAfterStats"></div></div>
                         </div>
                     </div>
                 </div>
@@ -264,7 +303,7 @@
     </div>
 
     <script>
-        // ==================== 数据清洗引擎（核心升级） ====================
+        // ==================== 数据清洗引擎 ====================
         class DataCleaningEngine {
             constructor(data, headers) {
                 this.originalData = JSON.parse(JSON.stringify(data));
@@ -276,78 +315,27 @@
                 this.beforeSnapshot = JSON.parse(JSON.stringify(data));
                 this.saveState();
             }
-
             saveState() {
                 this.history = this.history.slice(0, this.historyIndex + 1);
                 this.history.push(JSON.parse(JSON.stringify(this.data)));
                 this.historyIndex++;
-                if (this.history.length > 30) {
-                    this.history.shift();
-                    this.historyIndex--;
-                }
+                if (this.history.length > 30) { this.history.shift(); this.historyIndex--; }
             }
+            undo() { if (this.historyIndex > 0) { this.historyIndex--; this.data = JSON.parse(JSON.stringify(this.history[this.historyIndex])); } return this.data; }
+            redo() { if (this.historyIndex < this.history.length - 1) { this.historyIndex++; this.data = JSON.parse(JSON.stringify(this.history[this.historyIndex])); } return this.data; }
+            reset() { this.data = JSON.parse(JSON.stringify(this.originalData)); this.rules = []; this.beforeSnapshot = JSON.parse(JSON.stringify(this.originalData)); this.history = []; this.historyIndex = -1; this.saveState(); return this.data; }
+            setData(newData) { this.beforeSnapshot = JSON.parse(JSON.stringify(this.data)); this.data = JSON.parse(JSON.stringify(newData)); this.saveState(); }
 
-            undo() {
-                if (this.historyIndex > 0) {
-                    this.historyIndex--;
-                    this.data = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
-                }
-                return this.data;
-            }
-
-            redo() {
-                if (this.historyIndex < this.history.length - 1) {
-                    this.historyIndex++;
-                    this.data = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
-                }
-                return this.data;
-            }
-
-            reset() {
-                this.data = JSON.parse(JSON.stringify(this.originalData));
-                this.rules = [];
-                this.beforeSnapshot = JSON.parse(JSON.stringify(this.originalData));
-                this.history = [];
-                this.historyIndex = -1;
-                this.saveState();
-                return this.data;
-            }
-
-            // 统计计算
             getColumnStats(column) {
                 const values = this.data.map(r => r[column]).filter(v => v !== '' && v !== null && v !== undefined);
                 const nums = values.map(v => Number(v)).filter(v => !isNaN(v));
                 const sorted = nums.length ? [...nums].sort((a,b) => a-b) : [];
-                const sum = nums.reduce((a,b) => a+b, 0);
-                const mean = nums.length ? sum / nums.length : null;
+                const mean = nums.length ? nums.reduce((a,b) => a+b, 0) / nums.length : null;
                 const variance = nums.length ? nums.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / nums.length : null;
-
-                return {
-                    count: this.data.length,
-                    valid: values.length,
-                    missing: this.data.length - values.length,
-                    missingRate: ((this.data.length - values.length) / this.data.length * 100).toFixed(1),
-                    unique: [...new Set(values)].length,
-                    numeric: nums.length,
-                    min: nums.length ? sorted[0] : null,
-                    max: nums.length ? sorted[sorted.length-1] : null,
-                    mean: mean ? mean.toFixed(2) : null,
-                    median: nums.length ? this.percentile(sorted, 0.5) : null,
-                    std: variance ? Math.sqrt(variance).toFixed(2) : null,
-                    q1: nums.length ? this.percentile(sorted, 0.25) : null,
-                    q3: nums.length ? this.percentile(sorted, 0.75) : null
-                };
+                return { count: this.data.length, valid: values.length, missing: this.data.length - values.length, missingRate: ((this.data.length - values.length) / this.data.length * 100).toFixed(1), unique: [...new Set(values)].length, numeric: nums.length, min: nums.length ? sorted[0] : null, max: nums.length ? sorted[sorted.length-1] : null, mean: mean ? mean.toFixed(2) : null, median: nums.length ? this.percentile(sorted, 0.5) : null, std: variance ? Math.sqrt(variance).toFixed(2) : null, q1: nums.length ? this.percentile(sorted, 0.25) : null, q3: nums.length ? this.percentile(sorted, 0.75) : null };
             }
+            percentile(sortedArr, p) { const idx = (sortedArr.length - 1) * p; const lower = Math.floor(idx); const upper = Math.ceil(idx); if (lower === upper) return sortedArr[lower]; return sortedArr[lower] * (upper - idx) + sortedArr[upper] * (idx - lower); }
 
-            percentile(sortedArr, p) {
-                const idx = (sortedArr.length - 1) * p;
-                const lower = Math.floor(idx);
-                const upper = Math.ceil(idx);
-                if (lower === upper) return sortedArr[lower];
-                return sortedArr[lower] * (upper - idx) + sortedArr[upper] * (idx - lower);
-            }
-
-            // 规则执行
             executeRule(rule) {
                 const beforeCount = this.data.length;
                 switch(rule.type) {
@@ -364,188 +352,60 @@
                 this.saveState();
                 return { beforeCount, afterCount: this.data.length };
             }
-
-            removeDuplicates(columns) {
-                const cols = columns && columns.length ? columns : this.headers;
-                const seen = new Set();
-                this.data = this.data.filter(row => {
-                    const key = cols.map(c => String(row[c] || '')).join('||');
-                    if (seen.has(key)) return false;
-                    seen.add(key);
-                    return true;
-                });
-            }
-
-            removeEmptyRows(columns) {
-                const cols = columns && columns.length ? columns : this.headers;
-                this.data = this.data.filter(row => cols.some(c => {
-                    const v = row[c];
-                    return v !== undefined && v !== null && v !== '';
-                }));
-            }
-
-            trim(columns) {
-                const cols = columns && columns.length ? columns : this.headers;
-                this.data.forEach(row => {
-                    cols.forEach(c => {
-                        if (typeof row[c] === 'string') row[c] = row[c].trim();
-                    });
-                });
-            }
-
+            removeDuplicates(columns) { const cols = columns && columns.length ? columns : this.headers; const seen = new Set(); this.data = this.data.filter(row => { const key = cols.map(c => String(row[c] || '')).join('||'); if (seen.has(key)) return false; seen.add(key); return true; }); }
+            removeEmptyRows(columns) { const cols = columns && columns.length ? columns : this.headers; this.data = this.data.filter(row => cols.some(c => { const v = row[c]; return v !== undefined && v !== null && v !== ''; })); }
+            trim(columns) { const cols = columns && columns.length ? columns : this.headers; this.data.forEach(row => { cols.forEach(c => { if (typeof row[c] === 'string') row[c] = row[c].trim(); }); }); }
             convertType(columns, targetType) {
                 const cols = columns && columns.length ? columns : this.headers;
-                this.data.forEach(row => {
-                    cols.forEach(c => {
-                        const val = row[c];
-                        if (val === '' || val === null || val === undefined) return;
-                        if (targetType === 'number') {
-                            const n = Number(String(val).replace(/,/g, ''));
-                            if (!isNaN(n)) row[c] = n;
-                        } else if (targetType === 'date') {
-                            const d = new Date(val);
-                            if (!isNaN(d)) row[c] = d.toISOString().split('T')[0];
-                        } else if (targetType === 'string') {
-                            row[c] = String(val);
-                        } else if (targetType === 'currency') {
-                            const n = Number(String(val).replace(/[^\d.-]/g, ''));
-                            if (!isNaN(n)) row[c] = n;
-                        }
-                    });
-                });
+                this.data.forEach(row => { cols.forEach(c => { const val = row[c]; if (val === '' || val === null || val === undefined) return; if (targetType === 'number') { const n = Number(String(val).replace(/,/g, '')); if (!isNaN(n)) row[c] = n; } else if (targetType === 'date') { const d = new Date(val); if (!isNaN(d)) row[c] = d.toISOString().split('T')[0]; } else if (targetType === 'string') { row[c] = String(val); } else if (targetType === 'currency') { const n = Number(String(val).replace(/[^\d.-]/g, '')); if (!isNaN(n)) row[c] = n; } }); });
             }
-
             fillMissing(column, strategy, fillValue) {
                 const nums = this.data.map(r => Number(r[column])).filter(v => !isNaN(v));
                 let value;
                 switch(strategy) {
                     case 'mean': value = nums.length ? (nums.reduce((a,b) => a+b, 0) / nums.length).toFixed(2) : 0; break;
                     case 'median': value = nums.length ? this.percentile([...nums].sort((a,b) => a-b), 0.5) : 0; break;
-                    case 'mode': {
-                        const counts = {};
-                        this.data.forEach(r => { const v = r[column]; if (v !== '' && v !== null && v !== undefined) counts[v] = (counts[v]||0)+1; });
-                        const entries = Object.entries(counts);
-                        value = entries.length ? entries.sort((a,b) => b[1]-a[1])[0][0] : '';
-                        break;
-                    }
-                    case 'forward': {
-                        let last = fillValue;
-                        this.data.forEach(r => {
-                            if (r[column] === '' || r[column] === null || r[column] === undefined) {
-                                r[column] = last;
-                            } else {
-                                last = r[column];
-                            }
-                        });
-                        return;
-                    }
-                    case 'backward': {
-                        let next = fillValue;
-                        for (let i = this.data.length - 1; i >= 0; i--) {
-                            if (this.data[i][column] === '' || this.data[i][column] === null || this.data[i][column] === undefined) {
-                                this.data[i][column] = next;
-                            } else {
-                                next = this.data[i][column];
-                            }
-                        }
-                        return;
-                    }
+                    case 'mode': { const counts = {}; this.data.forEach(r => { const v = r[column]; if (v !== '' && v !== null && v !== undefined) counts[v] = (counts[v]||0)+1; }); const entries = Object.entries(counts); value = entries.length ? entries.sort((a,b) => b[1]-a[1])[0][0] : ''; break; }
+                    case 'forward': { let last = fillValue; this.data.forEach(r => { if (r[column] === '' || r[column] === null || r[column] === undefined) { r[column] = last; } else { last = r[column]; } }); return; }
+                    case 'backward': { let next = fillValue; for (let i = this.data.length - 1; i >= 0; i--) { if (this.data[i][column] === '' || this.data[i][column] === null || this.data[i][column] === undefined) { this.data[i][column] = next; } else { next = this.data[i][column]; } } return; }
                     case 'fixed': value = fillValue; break;
                 }
-                this.data.forEach(r => {
-                    if (r[column] === '' || r[column] === null || r[column] === undefined) {
-                        r[column] = value;
-                    }
-                });
+                this.data.forEach(r => { if (r[column] === '' || r[column] === null || r[column] === undefined) { r[column] = value; } });
             }
-
             removeOutliers(column, method) {
                 const nums = this.data.map(r => Number(r[column])).filter(v => !isNaN(v));
                 if (!nums.length) return;
                 let lower, upper;
-                if (method === 'iqr') {
-                    const sorted = [...nums].sort((a,b) => a-b);
-                    const q1 = this.percentile(sorted, 0.25);
-                    const q3 = this.percentile(sorted, 0.75);
-                    const iqr = q3 - q1;
-                    lower = q1 - 1.5 * iqr;
-                    upper = q3 + 1.5 * iqr;
-                } else if (method === '3sigma') {
-                    const mean = nums.reduce((a,b) => a+b, 0) / nums.length;
-                    const variance = nums.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / nums.length;
-                    const std = Math.sqrt(variance);
-                    lower = mean - 3 * std;
-                    upper = mean + 3 * std;
-                } else if (method === 'zscore') {
-                    const mean = nums.reduce((a,b) => a+b, 0) / nums.length;
-                    const variance = nums.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / nums.length;
-                    const std = Math.sqrt(variance);
-                    this.data = this.data.filter(r => {
-                        const v = Number(r[column]);
-                        if (isNaN(v)) return true;
-                        return Math.abs((v - mean) / std) <= 3;
-                    });
-                    return;
-                }
-                this.data = this.data.filter(r => {
-                    const v = Number(r[column]);
-                    if (isNaN(v)) return true;
-                    return v >= lower && v <= upper;
-                });
+                if (method === 'iqr') { const sorted = [...nums].sort((a,b) => a-b); const q1 = this.percentile(sorted, 0.25); const q3 = this.percentile(sorted, 0.75); const iqr = q3 - q1; lower = q1 - 1.5 * iqr; upper = q3 + 1.5 * iqr; }
+                else if (method === '3sigma') { const mean = nums.reduce((a,b) => a+b, 0) / nums.length; const variance = nums.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / nums.length; const std = Math.sqrt(variance); lower = mean - 3 * std; upper = mean + 3 * std; }
+                else if (method === 'zscore') { const mean = nums.reduce((a,b) => a+b, 0) / nums.length; const variance = nums.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / nums.length; const std = Math.sqrt(variance); this.data = this.data.filter(r => { const v = Number(r[column]); if (isNaN(v)) return true; return Math.abs((v - mean) / std) <= 3; }); return; }
+                this.data = this.data.filter(r => { const v = Number(r[column]); if (isNaN(v)) return true; return v >= lower && v <= upper; });
             }
-
-            replace(column, search, replace, useRegex) {
-                this.data.forEach(row => {
-                    if (typeof row[column] === 'string') {
-                        if (useRegex) {
-                            const regex = new RegExp(search, 'g');
-                            row[column] = row[column].replace(regex, replace);
-                        } else {
-                            row[column] = row[column].split(search).join(replace);
-                        }
-                    }
-                });
-            }
-
+            replace(column, search, replace, useRegex) { this.data.forEach(row => { if (typeof row[column] === 'string') { if (useRegex) { const regex = new RegExp(search, 'g'); row[column] = row[column].replace(regex, replace); } else { row[column] = row[column].split(search).join(replace); } } }); }
             filterRows(column, condition, value) {
                 const numVal = Number(value);
                 this.data = this.data.filter(row => {
-                    const cell = row[column];
-                    const num = Number(cell);
+                    const cell = row[column]; const num = Number(cell);
                     switch(condition) {
-                        case 'eq': return String(cell) === value;
-                        case 'ne': return String(cell) !== value;
-                        case 'gt': return !isNaN(num) && num > numVal;
-                        case 'gte': return !isNaN(num) && num >= numVal;
-                        case 'lt': return !isNaN(num) && num < numVal;
-                        case 'lte': return !isNaN(num) && num <= numVal;
-                        case 'contains': return String(cell).includes(value);
-                        case 'notContains': return !String(cell).includes(value);
-                        case 'startsWith': return String(cell).startsWith(value);
-                        case 'endsWith': return String(cell).endsWith(value);
-                        case 'empty': return cell === '' || cell === null || cell === undefined;
-                        case 'notEmpty': return cell !== '' && cell !== null && cell !== undefined;
+                        case 'eq': return String(cell) === value; case 'ne': return String(cell) !== value;
+                        case 'gt': return !isNaN(num) && num > numVal; case 'gte': return !isNaN(num) && num >= numVal;
+                        case 'lt': return !isNaN(num) && num < numVal; case 'lte': return !isNaN(num) && num <= numVal;
+                        case 'contains': return String(cell).includes(value); case 'notContains': return !String(cell).includes(value);
+                        case 'startsWith': return String(cell).startsWith(value); case 'endsWith': return String(cell).endsWith(value);
+                        case 'empty': return cell === '' || cell === null || cell === undefined; case 'notEmpty': return cell !== '' && cell !== null && cell !== undefined;
                         default: return true;
                     }
                 });
             }
-
             standardize(column, format) {
                 this.data.forEach(row => {
-                    const val = row[column];
-                    if (val === '' || val === null || val === undefined) return;
+                    const val = row[column]; if (val === '' || val === null || val === undefined) return;
                     if (format === 'uppercase') row[column] = String(val).toUpperCase();
                     else if (format === 'lowercase') row[column] = String(val).toLowerCase();
-                    else if (format === 'capitalize') {
-                        const s = String(val).toLowerCase();
-                        row[column] = s.charAt(0).toUpperCase() + s.slice(1);
-                    }
+                    else if (format === 'capitalize') { const s = String(val).toLowerCase(); row[column] = s.charAt(0).toUpperCase() + s.slice(1); }
                     else if (format === 'removeSpecial') row[column] = String(val).replace(/[^\w\s\u4e00-\u9fa5]/g, '');
                     else if (format === 'removeSpaces') row[column] = String(val).replace(/\s+/g, '');
-                    else if (format === 'normalizeDate') {
-                        const d = new Date(val);
-                        if (!isNaN(d)) row[column] = d.toISOString().split('T')[0];
-                    }
+                    else if (format === 'normalizeDate') { const d = new Date(val); if (!isNaN(d)) row[column] = d.toISOString().split('T')[0]; }
                 });
             }
         }
@@ -556,16 +416,24 @@
         let currentHeaders = [];
         let chartInstance = null;
         let pendingRules = [];
+        let lastSQLResult = null;
+
+        // ==================== 标签页切换 ====================
+        function switchTab(tab) {
+            document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            document.getElementById('panel-rule').classList.toggle('hidden', tab !== 'rule');
+            document.getElementById('panel-sql').classList.toggle('hidden', tab !== 'sql');
+            if (tab === 'sql') refreshSQLStats();
+        }
 
         // ==================== 文件上传 ====================
         function handleFile(e) {
             const file = e.target.files?.[0] || e;
             if (!file) return;
-
             document.getElementById('fileInfo').textContent = `正在读取: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
             document.getElementById('progressBar').classList.remove('hidden');
             updateProgress(30);
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
@@ -573,200 +441,72 @@
                     const workbook = XLSX.read(data, { type: 'array' });
                     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                     const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-                    if (jsonData.length < 2) { alert('文件数据太少，至少需要表头和一行数据'); return; }
-
-                    // 编码修复
-                    function fixEncoding(str) {
-                        if (typeof str !== 'string') return str;
-                        try {
-                            const bytes = new Uint8Array(str.length);
-                            for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i) & 0xFF;
-                            const fixed = new TextDecoder('utf-8').decode(bytes);
-                            if (/[\u4e00-\u9fa5]/.test(fixed)) return fixed;
-                        } catch(e) {}
-                        return str;
-                    }
-
+                    if (jsonData.length < 2) { alert('文件数据太少'); return; }
+                    function fixEncoding(str) { if (typeof str !== 'string') return str; try { const bytes = new Uint8Array(str.length); for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i) & 0xFF; const fixed = new TextDecoder('utf-8').decode(bytes); if (/[\u4e00-\u9fa5]/.test(fixed)) return fixed; } catch(e) {} return str; }
                     currentHeaders = jsonData[0].map(h => fixEncoding(String(h).trim()));
-                    originalData = jsonData.slice(1).map(row => {
-                        const obj = {};
-                        currentHeaders.forEach((h, i) => obj[h] = fixEncoding(row[i]));
-                        return obj;
-                    });
-
+                    originalData = jsonData.slice(1).map(row => { const obj = {}; currentHeaders.forEach((h, i) => obj[h] = fixEncoding(row[i])); return obj; });
                     updateProgress(100);
                     engine = new DataCleaningEngine(originalData, currentHeaders);
-
                     showSections();
                     refreshAll();
                     populateSelects();
-
-                    document.getElementById('fileInfo').innerHTML = 
-                        `✅ <strong>${file.name}</strong> | ${originalData.length} 行 × ${currentHeaders.length} 列 | 
-                         <span class="badge badge-green">导入成功</span>`;
+                    document.getElementById('fileInfo').innerHTML = `✅ <strong>${file.name}</strong> | ${originalData.length} 行 × ${currentHeaders.length} 列 | <span class="badge badge-green">导入成功</span>`;
                 } catch (err) { alert('读取失败: ' + err.message); }
             };
             reader.readAsArrayBuffer(file);
         }
-
         function updateProgress(pct) { document.getElementById('progressFill').style.width = pct + '%'; }
+        function showSections() { ['cleanCard', 'verifyCard', 'analysisCard', 'reportCard'].forEach(id => document.getElementById(id).classList.remove('hidden')); }
+        function populateSelects() { ['verifyColumn', 'xAxis', 'yAxis'].forEach(id => { const sel = document.getElementById(id); sel.innerHTML = currentHeaders.map(h => `<option value="${h}">${h}</option>`).join(''); }); }
 
-        function showSections() {
-            ['cleanCard', 'verifyCard', 'analysisCard', 'reportCard'].forEach(id => {
-                document.getElementById(id).classList.remove('hidden');
-            });
-        }
-
-        function populateSelects() {
-            ['verifyColumn', 'xAxis', 'yAxis'].forEach(id => {
-                const sel = document.getElementById(id);
-                sel.innerHTML = currentHeaders.map(h => `<option value="${h}">${h}</option>`).join('');
-            });
-        }
-
-        // ==================== 清洗引擎 UI ====================
+        // ==================== 规则引擎 UI ====================
         function onRuleTypeChange() {
             const type = document.getElementById('ruleType').value;
             const container = document.getElementById('ruleParams');
             const btn = document.getElementById('addRuleBtn');
             if (!type) { container.innerHTML = ''; btn.disabled = true; return; }
-
             let html = '';
             const colSelect = `<select id="paramColumn">${currentHeaders.map(h => `<option value="${h}">${h}</option>`).join('')}</select>`;
             const colMulti = `<select id="paramColumns" multiple style="height:80px">${currentHeaders.map(h => `<option value="${h}">${h}</option>`).join('')}</select><div style="font-size:11px;color:#9ca3af;margin-top:4px;">按住 Ctrl/Cmd 多选，不选则应用到所有列</div>`;
-
             switch(type) {
-                case 'removeDuplicates':
-                    html = `<div class="form-group"><label>指定列（不选=全部）</label>${colMulti}</div>`; break;
-                case 'removeEmptyRows':
-                    html = `<div class="form-group"><label>检查列（不选=全部）</label>${colMulti}</div>`; break;
-                case 'trim':
-                    html = `<div class="form-group"><label>目标列（不选=全部）</label>${colMulti}</div>`; break;
-                case 'convertType':
-                    html = `<div class="form-group"><label>目标列（不选=全部）</label>${colMulti}</div>
-                            <div class="form-group"><label>目标类型</label>
-                            <select id="paramTargetType">
-                                <option value="number">数值 (Number)</option>
-                                <option value="date">日期 (Date)</option>
-                                <option value="string">文本 (String)</option>
-                                <option value="currency">货币 (Currency)</option>
-                            </select></div>`; break;
-                case 'fillMissing':
-                    html = `<div class="form-group"><label>目标列</label>${colSelect}</div>
-                            <div class="form-group"><label>填充策略</label>
-                            <select id="paramStrategy" onchange="onStrategyChange()">
-                                <option value="mean">均值填充</option>
-                                <option value="median">中位数填充</option>
-                                <option value="mode">众数填充</option>
-                                <option value="forward">前向填充</option>
-                                <option value="backward">后向填充</option>
-                                <option value="fixed">固定值填充</option>
-                            </select></div>
-                            <div class="form-group" id="fixedValueGroup" style="display:none">
-                                <label>固定值</label><input type="text" id="paramFillValue" placeholder="输入填充值">
-                            </div>`; break;
-                case 'removeOutliers':
-                    html = `<div class="form-group"><label>目标列（数值型）</label>${colSelect}</div>
-                            <div class="form-group"><label>检测方法</label>
-                            <select id="paramMethod">
-                                <option value="iqr">IQR 四分位距 (1.5×IQR)</option>
-                                <option value="3sigma">3σ 原则</option>
-                                <option value="zscore">Z-Score (|z|>3)</option>
-                            </select></div>`; break;
-                case 'replace':
-                    html = `<div class="form-group"><label>目标列</label>${colSelect}</div>
-                            <div class="form-group"><label>查找内容</label><input type="text" id="paramSearch" placeholder="支持正则"></div>
-                            <div class="form-group"><label>替换为</label><input type="text" id="paramReplace" placeholder="留空即删除"></div>
-                            <div class="form-group"><label><input type="checkbox" id="paramRegex"> 使用正则表达式</label></div>`; break;
-                case 'filter':
-                    html = `<div class="form-group"><label>目标列</label>${colSelect}</div>
-                            <div class="form-group"><label>条件</label>
-                            <select id="paramCondition">
-                                <option value="eq">等于</option>
-                                <option value="ne">不等于</option>
-                                <option value="gt">大于</option>
-                                <option value="gte">大于等于</option>
-                                <option value="lt">小于</option>
-                                <option value="lte">小于等于</option>
-                                <option value="contains">包含</option>
-                                <option value="notContains">不包含</option>
-                                <option value="startsWith">开头是</option>
-                                <option value="endsWith">结尾是</option>
-                                <option value="empty">为空</option>
-                                <option value="notEmpty">不为空</option>
-                            </select></div>
-                            <div class="form-group" id="filterValueGroup">
-                                <label>比较值</label><input type="text" id="paramValue" placeholder="输入比较值">
-                            </div>`; break;
-                case 'standardize':
-                    html = `<div class="form-group"><label>目标列</label>${colSelect}</div>
-                            <div class="form-group"><label>标准化格式</label>
-                            <select id="paramFormat">
-                                <option value="uppercase">全部大写</option>
-                                <option value="lowercase">全部小写</option>
-                                <option value="capitalize">首字母大写</option>
-                                <option value="removeSpecial">去除特殊字符</option>
-                                <option value="removeSpaces">去除所有空格</option>
-                                <option value="normalizeDate">统一日期格式</option>
-                            </select></div>`; break;
+                case 'removeDuplicates': case 'removeEmptyRows': case 'trim': html = `<div class="form-group"><label>指定列（不选=全部）</label>${colMulti}</div>`; break;
+                case 'convertType': html = `<div class="form-group"><label>目标列（不选=全部）</label>${colMulti}</div><div class="form-group"><label>目标类型</label><select id="paramTargetType"><option value="number">数值 (Number)</option><option value="date">日期 (Date)</option><option value="string">文本 (String)</option><option value="currency">货币 (Currency)</option></select></div>`; break;
+                case 'fillMissing': html = `<div class="form-group"><label>目标列</label>${colSelect}</div><div class="form-group"><label>填充策略</label><select id="paramStrategy" onchange="onStrategyChange()"><option value="mean">均值填充</option><option value="median">中位数填充</option><option value="mode">众数填充</option><option value="forward">前向填充</option><option value="backward">后向填充</option><option value="fixed">固定值填充</option></select></div><div class="form-group" id="fixedValueGroup" style="display:none"><label>固定值</label><input type="text" id="paramFillValue" placeholder="输入填充值"></div>`; break;
+                case 'removeOutliers': html = `<div class="form-group"><label>目标列（数值型）</label>${colSelect}</div><div class="form-group"><label>检测方法</label><select id="paramMethod"><option value="iqr">IQR 四分位距 (1.5×IQR)</option><option value="3sigma">3σ 原则</option><option value="zscore">Z-Score (|z|>3)</option></select></div>`; break;
+                case 'replace': html = `<div class="form-group"><label>目标列</label>${colSelect}</div><div class="form-group"><label>查找内容</label><input type="text" id="paramSearch" placeholder="支持正则"></div><div class="form-group"><label>替换为</label><input type="text" id="paramReplace" placeholder="留空即删除"></div><div class="form-group"><label><input type="checkbox" id="paramRegex"> 使用正则表达式</label></div>`; break;
+                case 'filter': html = `<div class="form-group"><label>目标列</label>${colSelect}</div><div class="form-group"><label>条件</label><select id="paramCondition"><option value="eq">等于</option><option value="ne">不等于</option><option value="gt">大于</option><option value="gte">大于等于</option><option value="lt">小于</option><option value="lte">小于等于</option><option value="contains">包含</option><option value="notContains">不包含</option><option value="startsWith">开头是</option><option value="endsWith">结尾是</option><option value="empty">为空</option><option value="notEmpty">不为空</option></select></div><div class="form-group" id="filterValueGroup"><label>比较值</label><input type="text" id="paramValue" placeholder="输入比较值"></div>`; break;
+                case 'standardize': html = `<div class="form-group"><label>目标列</label>${colSelect}</div><div class="form-group"><label>标准化格式</label><select id="paramFormat"><option value="uppercase">全部大写</option><option value="lowercase">全部小写</option><option value="capitalize">首字母大写</option><option value="removeSpecial">去除特殊字符</option><option value="removeSpaces">去除所有空格</option><option value="normalizeDate">统一日期格式</option></select></div>`; break;
             }
             container.innerHTML = html;
             btn.disabled = false;
         }
-
-        function onStrategyChange() {
-            const strategy = document.getElementById('paramStrategy').value;
-            document.getElementById('fixedValueGroup').style.display = strategy === 'fixed' ? 'block' : 'none';
-        }
-
+        function onStrategyChange() { const strategy = document.getElementById('paramStrategy').value; document.getElementById('fixedValueGroup').style.display = strategy === 'fixed' ? 'block' : 'none'; }
         function addRule() {
             const type = document.getElementById('ruleType').value;
             if (!type) return;
-
             const rule = { type };
             const getVal = (id) => document.getElementById(id)?.value;
             const getChecked = (id) => document.getElementById(id)?.checked;
             const getMulti = (id) => Array.from(document.getElementById(id)?.selectedOptions || []).map(o => o.value);
-
             switch(type) {
-                case 'removeDuplicates': case 'removeEmptyRows': case 'trim':
-                    rule.columns = getMulti('paramColumns'); break;
-                case 'convertType':
-                    rule.columns = getMulti('paramColumns'); rule.targetType = getVal('paramTargetType'); break;
-                case 'fillMissing':
-                    rule.column = getVal('paramColumn'); rule.strategy = getVal('paramStrategy'); 
-                    rule.fillValue = getVal('paramFillValue'); break;
-                case 'removeOutliers':
-                    rule.column = getVal('paramColumn'); rule.method = getVal('paramMethod'); break;
-                case 'replace':
-                    rule.column = getVal('paramColumn'); rule.search = getVal('paramSearch'); 
-                    rule.replace = getVal('paramReplace'); rule.useRegex = getChecked('paramRegex'); break;
-                case 'filter':
-                    rule.column = getVal('paramColumn'); rule.condition = getVal('paramCondition'); 
-                    rule.value = getVal('paramValue'); break;
-                case 'standardize':
-                    rule.column = getVal('paramColumn'); rule.format = getVal('paramFormat'); break;
+                case 'removeDuplicates': case 'removeEmptyRows': case 'trim': rule.columns = getMulti('paramColumns'); break;
+                case 'convertType': rule.columns = getMulti('paramColumns'); rule.targetType = getVal('paramTargetType'); break;
+                case 'fillMissing': rule.column = getVal('paramColumn'); rule.strategy = getVal('paramStrategy'); rule.fillValue = getVal('paramFillValue'); break;
+                case 'removeOutliers': rule.column = getVal('paramColumn'); rule.method = getVal('paramMethod'); break;
+                case 'replace': rule.column = getVal('paramColumn'); rule.search = getVal('paramSearch'); rule.replace = getVal('paramReplace'); rule.useRegex = getChecked('paramRegex'); break;
+                case 'filter': rule.column = getVal('paramColumn'); rule.condition = getVal('paramCondition'); rule.value = getVal('paramValue'); break;
+                case 'standardize': rule.column = getVal('paramColumn'); rule.format = getVal('paramFormat'); break;
             }
-
             pendingRules.push(rule);
             renderRuleList();
             document.getElementById('ruleType').value = '';
             document.getElementById('ruleParams').innerHTML = '';
             document.getElementById('addRuleBtn').disabled = true;
         }
-
         function renderRuleList() {
             const container = document.getElementById('ruleList');
-            if (!pendingRules.length) {
-                container.innerHTML = '<div style="color: #9ca3af; font-size: 12px; text-align: center; padding: 20px;">暂无规则，请从上方添加</div>';
-                return;
-            }
-            const typeNames = {
-                removeDuplicates: '删除重复行', removeEmptyRows: '删除空行', trim: '去除首尾空格',
-                convertType: '类型转换', fillMissing: '缺失值填充', removeOutliers: '异常值剔除',
-                replace: '查找替换', filter: '条件过滤', standardize: '数据标准化'
-            };
+            if (!pendingRules.length) { container.innerHTML = '<div style="color: #9ca3af; font-size: 12px; text-align: center; padding: 20px;">暂无规则，请从上方添加</div>'; return; }
+            const typeNames = { removeDuplicates: '删除重复行', removeEmptyRows: '删除空行', trim: '去除首尾空格', convertType: '类型转换', fillMissing: '缺失值填充', removeOutliers: '异常值剔除', replace: '查找替换', filter: '条件过滤', standardize: '数据标准化' };
             container.innerHTML = pendingRules.map((r, i) => {
                 let desc = '';
                 if (r.column) desc += `列: ${r.column}`;
@@ -774,39 +514,91 @@
                 if (r.strategy) desc += ` | ${r.strategy}`;
                 if (r.condition) desc += ` | ${r.condition} ${r.value || ''}`;
                 if (r.format) desc += ` | ${r.format}`;
-                return `<div class="rule-tag">
-                    <div><div class="rule-name">${i+1}. ${typeNames[r.type] || r.type}</div>
-                    <div class="rule-desc">${desc}</div></div>
-                    <span class="remove-rule" onclick="removeRule(${i})">✕</span>
-                </div>`;
+                return `<div class="rule-tag"><div><div class="rule-name">${i+1}. ${typeNames[r.type] || r.type}</div><div class="rule-desc">${desc}</div></div><span class="remove-rule" onclick="removeRule(${i})">✕</span></div>`;
             }).join('');
         }
-
         function removeRule(idx) { pendingRules.splice(idx, 1); renderRuleList(); }
-
         function executeRules() {
             if (!pendingRules.length) { alert('请先添加清洗规则'); return; }
             if (!engine) return;
-
             engine.beforeSnapshot = JSON.parse(JSON.stringify(engine.data));
             pendingRules.forEach(rule => engine.executeRule(rule));
             pendingRules = [];
             renderRuleList();
             refreshAll();
         }
+        function resetAll() { if (!engine) return; engine.reset(); pendingRules = []; renderRuleList(); refreshAll(); }
+        function refreshAll() { showData(); updateCleanStats(); updateCompareStats(); refreshSQLStats(); }
 
-        function resetAll() {
-            if (!engine) return;
-            engine.reset();
-            pendingRules = [];
-            renderRuleList();
-            refreshAll();
+        // ==================== AlaSQL 查询 ====================
+        function setSQL(sql) { document.getElementById('sqlEditor').value = sql; }
+
+        function runSQLQuery() {
+            if (!engine) { alert('请先导入数据'); return; }
+            const sql = document.getElementById('sqlEditor').value.trim();
+            if (!sql) { alert('请输入 SQL 语句'); return; }
+
+            const resultEl = document.getElementById('sqlResult');
+            try {
+                // 将当前数据注册为 AlaSQL 的 data 表
+                alasql.tables = alasql.tables || {};
+                alasql.tables.data = { data: engine.data };
+
+                // 执行 SQL
+                const result = alasql(sql, [engine.data]);
+                lastSQLResult = result;
+
+                // 显示结果
+                showSQLTable(result);
+                resultEl.className = 'sql-result success';
+                resultEl.textContent = `✅ 查询成功，返回 ${Array.isArray(result) ? result.length : 1} 条结果`;
+                resultEl.classList.remove('hidden');
+                document.getElementById('sqlResultCount').textContent = `共 ${Array.isArray(result) ? result.length : 1} 行`;
+                refreshSQLStats();
+            } catch (err) {
+                lastSQLResult = null;
+                resultEl.className = 'sql-result error';
+                resultEl.textContent = `❌ SQL 错误: ${err.message}`;
+                resultEl.classList.remove('hidden');
+                document.getElementById('sqlTable').innerHTML = '';
+                document.getElementById('sqlResultCount').textContent = '';
+            }
         }
 
-        function refreshAll() {
-            showData();
-            updateCleanStats();
-            updateCompareStats();
+        function showSQLTable(data) {
+            const table = document.getElementById('sqlTable');
+            if (!Array.isArray(data) || !data.length) { table.innerHTML = '<tr><td style="text-align:center;color:#9ca3af;padding:20px;">无数据</td></tr>'; return; }
+            const cols = Object.keys(data[0]);
+            let html = '<thead><tr>' + cols.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+            data.slice(0, 100).forEach(row => {
+                html += '<tr>' + cols.map(c => `<td>${row[c] !== undefined && row[c] !== null ? row[c] : ''}</td>`).join('') + '</tr>';
+            });
+            if (data.length > 100) html += `<tr><td colspan="${cols.length}" style="text-align:center;color:#9ca3af;padding:16px;">... 还有 ${data.length - 100} 行 ...</td></tr>`;
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+
+        function applySQLResult() {
+            if (!lastSQLResult) { alert('请先执行 SQL 查询'); return; }
+            if (!Array.isArray(lastSQLResult)) { alert('当前 SQL 结果不是数据表，无法应用'); return; }
+            if (!lastSQLResult.length) { alert('SQL 结果为空'); return; }
+
+            engine.setData(lastSQLResult);
+            // 更新列名（SQL 查询可能改变了列结构）
+            currentHeaders = Object.keys(lastSQLResult[0]);
+            populateSelects();
+            refreshAll();
+            alert(`✅ 已应用 SQL 结果，当前 ${lastSQLResult.length} 行 × ${currentHeaders.length} 列`);
+        }
+
+        function refreshSQLStats() {
+            if (!engine) return;
+            const beforeHtml = `<div class="stats" style="grid-template-columns:1fr 1fr;gap:8px;"><div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;">${engine.data.length}</div><div class="stat-label">行数</div></div><div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;">${currentHeaders.length}</div><div class="stat-label">列数</div></div></div>`;
+            const afterCount = lastSQLResult && Array.isArray(lastSQLResult) ? lastSQLResult.length : engine.data.length;
+            const afterCols = lastSQLResult && Array.isArray(lastSQLResult) && lastSQLResult.length ? Object.keys(lastSQLResult[0]).length : currentHeaders.length;
+            const afterHtml = `<div class="stats" style="grid-template-columns:1fr 1fr;gap:8px;"><div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;color:#059669">${afterCount}</div><div class="stat-label">行数</div></div><div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;">${afterCols}</div><div class="stat-label">列数</div></div></div>`;
+            document.getElementById('sqlBeforeStats').innerHTML = beforeHtml;
+            document.getElementById('sqlAfterStats').innerHTML = afterHtml;
         }
 
         // ==================== 数据展示 ====================
@@ -815,7 +607,6 @@
             const showDiff = document.getElementById('showDiff').checked;
             const before = engine.beforeSnapshot;
             const data = engine.data;
-
             let html = '<thead><tr>' + currentHeaders.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
             data.slice(0, 100).forEach((row, idx) => {
                 const beforeRow = before[idx];
@@ -831,46 +622,28 @@
             table.innerHTML = html;
             document.getElementById('rowCountDisplay').textContent = `显示前 100 行 / 共 ${data.length} 行`;
         }
-
         function updateCleanStats() {
             if (!engine) return;
             const data = engine.data;
             const before = engine.beforeSnapshot || [];
             const removed = before.length - data.length;
-
             let totalEmpty = 0, totalDup = 0;
-            data.forEach(row => {
-                currentHeaders.forEach(h => { if (row[h] === '' || row[h] === null || row[h] === undefined) totalEmpty++; });
-            });
-
-            const seen = new Set();
-            data.forEach(row => { const key = JSON.stringify(row); if (seen.has(key)) totalDup++; else seen.add(key); });
-
+            data.forEach(row => { currentHeaders.forEach(h => { if (row[h] === '' || row[h] === null || row[h] === undefined) totalEmpty++; }); });
+            const seen = new Set(); data.forEach(row => { const key = JSON.stringify(row); if (seen.has(key)) totalDup++; else seen.add(key); });
             document.getElementById('cleanStats').innerHTML = `
-                <div class="stat-item"><div class="stat-value">${data.length}</div><div class="stat-label">当前行数</div>
-                    ${removed > 0 ? `<div class="stat-delta down">↓ 已删除 ${removed} 行</div>` : ''}</div>
+                <div class="stat-item"><div class="stat-value">${data.length}</div><div class="stat-label">当前行数</div>${removed > 0 ? `<div class="stat-delta down">↓ 已删除 ${removed} 行</div>` : ''}</div>
                 <div class="stat-item"><div class="stat-value">${currentHeaders.length}</div><div class="stat-label">总列数</div></div>
                 <div class="stat-item"><div class="stat-value" style="color:${totalEmpty>0?'#dc2626':'#059669'}">${totalEmpty}</div><div class="stat-label">空值数量</div></div>
                 <div class="stat-item"><div class="stat-value" style="color:${totalDup>0?'#dc2626':'#059669'}">${totalDup}</div><div class="stat-label">重复行数</div></div>
                 <div class="stat-item"><div class="stat-value">${engine.historyIndex}</div><div class="stat-label">操作步数</div></div>
             `;
         }
-
         function updateCompareStats() {
             if (!engine) return;
             const before = engine.beforeSnapshot;
             const after = engine.data;
-
-            const beforeHtml = `<div class="stats" style="grid-template-columns:1fr 1fr;gap:8px;">
-                <div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;">${before.length}</div><div class="stat-label">行数</div></div>
-                <div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;">${currentHeaders.length}</div><div class="stat-label">列数</div></div>
-            </div>`;
-
-            const afterHtml = `<div class="stats" style="grid-template-columns:1fr 1fr;gap:8px;">
-                <div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;color:#059669">${after.length}</div><div class="stat-label">行数</div></div>
-                <div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;">${currentHeaders.length}</div><div class="stat-label">列数</div></div>
-            </div>`;
-
+            const beforeHtml = `<div class="stats" style="grid-template-columns:1fr 1fr;gap:8px;"><div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;">${before.length}</div><div class="stat-label">行数</div></div><div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;">${currentHeaders.length}</div><div class="stat-label">列数</div></div></div>`;
+            const afterHtml = `<div class="stats" style="grid-template-columns:1fr 1fr;gap:8px;"><div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;color:#059669">${after.length}</div><div class="stat-label">行数</div></div><div class="stat-item" style="padding:10px;"><div class="stat-value" style="font-size:18px;">${currentHeaders.length}</div><div class="stat-label">列数</div></div></div>`;
             document.getElementById('beforeStats').innerHTML = beforeHtml;
             document.getElementById('afterStats').innerHTML = afterHtml;
         }
@@ -879,17 +652,13 @@
         function runVerification() {
             const col = document.getElementById('verifyColumn').value;
             const rule = document.getElementById('verifyRule').value;
-            const cells = document.querySelectorAll('#dataTable td');
-            cells.forEach(cell => cell.classList.remove('error-cell'));
-
+            document.querySelectorAll('.error-cell').forEach(c => c.classList.remove('error-cell'));
             let errors = 0;
             const rows = document.querySelectorAll('#dataTable tbody tr');
             const colIdx = currentHeaders.indexOf(col);
             const data = engine ? engine.data : originalData;
-
             data.forEach((row, idx) => {
-                const val = row[col];
-                let isError = false;
+                const val = row[col]; let isError = false;
                 switch(rule) {
                     case 'notEmpty': isError = val === undefined || val === null || val === ''; break;
                     case 'isNumber': isError = isNaN(Number(val)) || val === ''; break;
@@ -898,28 +667,16 @@
                     case 'email': isError = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(val)); break;
                     case 'phone': isError = !/^1[3-9]\d{9}$/.test(String(val).replace(/\s/g,'')); break;
                     case 'idcard': isError = !/^(\d{15}|\d{17}[\dXx])$/.test(String(val)); break;
-                    case 'unique': {
-                        const allVals = data.map(r => r[col]);
-                        isError = allVals.filter(v => v === val).length > 1;
-                        break;
-                    }
+                    case 'unique': { const allVals = data.map(r => r[col]); isError = allVals.filter(v => v === val).length > 1; break; }
                 }
-                if (isError && idx < 100) {
-                    const tr = rows[idx];
-                    if (tr && tr.cells[colIdx]) tr.cells[colIdx].classList.add('error-cell');
-                    errors++;
-                } else if (isError) errors++;
+                if (isError && idx < 100) { const tr = rows[idx]; if (tr && tr.cells[colIdx]) tr.cells[colIdx].classList.add('error-cell'); errors++; }
+                else if (isError) errors++;
             });
-
             const resultEl = document.getElementById('verifyResult');
             if (errors === 0) resultEl.innerHTML = `<span class="badge badge-green">✅ 全部通过，无异常</span>`;
             else resultEl.innerHTML = `<span class="badge badge-red">❌ 发现 ${errors} 处异常（前100行已标红）</span>`;
         }
-
-        function clearVerify() {
-            document.querySelectorAll('.error-cell').forEach(c => c.classList.remove('error-cell'));
-            document.getElementById('verifyResult').textContent = '';
-        }
+        function clearVerify() { document.querySelectorAll('.error-cell').forEach(c => c.classList.remove('error-cell')); document.getElementById('verifyResult').textContent = ''; }
 
         // ==================== 数据分析图表 ====================
         function drawChart() {
@@ -927,42 +684,17 @@
             const yCol = document.getElementById('yAxis').value;
             const type = document.getElementById('chartType').value;
             const data = engine ? engine.data : originalData;
-
             if (chartInstance) chartInstance.dispose();
             chartInstance = echarts.init(document.getElementById('chart'));
-
             let option;
             if (type === 'pie') {
                 const counts = {};
-                data.forEach(row => {
-                    const k = String(row[xCol] || '空');
-                    const v = Number(row[yCol]) || 0;
-                    counts[k] = (counts[k] || 0) + v;
-                });
-                option = {
-                    title: { text: `${xCol} 占比分布`, left: 'center', textStyle: { fontSize: 16 } },
-                    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-                    series: [{ type: 'pie', radius: ['40%', '70%'], avoidLabelOverlap: true, 
-                        itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
-                        label: { show: true, formatter: '{b}\n{d}%' },
-                        data: Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value)
-                    }]
-                };
+                data.forEach(row => { const k = String(row[xCol] || '空'); const v = Number(row[yCol]) || 0; counts[k] = (counts[k] || 0) + v; });
+                option = { title: { text: `${xCol} 占比分布`, left: 'center', textStyle: { fontSize: 16 } }, tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' }, series: [{ type: 'pie', radius: ['40%', '70%'], avoidLabelOverlap: true, itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 }, label: { show: true, formatter: '{b}\n{d}%' }, data: Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value) }] };
             } else {
                 const xData = data.map(row => row[xCol]);
                 const yData = data.map(row => Number(row[yCol]) || 0);
-                option = {
-                    title: { text: `${xCol} vs ${yCol}`, left: 'center', textStyle: { fontSize: 16 } },
-                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-                    grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
-                    xAxis: { type: 'category', data: xData, axisLabel: { rotate: 45, fontSize: 11 }, axisTick: { alignWithLabel: true } },
-                    yAxis: { type: 'value', axisLine: { show: false }, splitLine: { lineStyle: { type: 'dashed', color: '#e5e7eb' } } },
-                    series: [{ data: yData, type: type, smooth: type === 'line', 
-                        itemStyle: { color: '#2563eb', borderRadius: type === 'bar' ? [4,4,0,0] : 0 },
-                        areaStyle: type === 'line' ? { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{offset: 0, color: 'rgba(37,99,235,0.2)'}, {offset: 1, color: 'rgba(37,99,235,0)'}] } } : null
-                    }],
-                    dataZoom: data.length > 20 ? [{ type: 'inside' }, { type: 'slider', bottom: 0 }] : []
-                };
+                option = { title: { text: `${xCol} vs ${yCol}`, left: 'center', textStyle: { fontSize: 16 } }, tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } }, grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true }, xAxis: { type: 'category', data: xData, axisLabel: { rotate: 45, fontSize: 11 }, axisTick: { alignWithLabel: true } }, yAxis: { type: 'value', axisLine: { show: false }, splitLine: { lineStyle: { type: 'dashed', color: '#e5e7eb' } } }, series: [{ data: yData, type: type, smooth: type === 'line', itemStyle: { color: '#2563eb', borderRadius: type === 'bar' ? [4,4,0,0] : 0 }, areaStyle: type === 'line' ? { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{offset: 0, color: 'rgba(37,99,235,0.2)'}, {offset: 1, color: 'rgba(37,99,235,0)'}] } } : null }], dataZoom: data.length > 20 ? [{ type: 'inside' }, { type: 'slider', bottom: 0 }] : [] };
             }
             chartInstance.setOption(option);
         }
@@ -973,49 +705,33 @@
             const content = document.getElementById('reportContent');
             btn.disabled = true;
             content.innerHTML = '<div class="report">正在分析数据并生成报告<span class="loading"></span></div>';
-
             const data = engine ? engine.data : originalData;
             const summary = { rowCount: data.length, colCount: currentHeaders.length, columns: currentHeaders };
-
             const stats = {};
             currentHeaders.forEach(h => {
                 const vals = data.map(r => r[h]).filter(v => v !== undefined && v !== null && v !== '');
                 const nums = vals.map(v => Number(v)).filter(v => !isNaN(v));
                 stats[h] = { type: nums.length > vals.length * 0.7 ? 'numeric' : 'text', count: vals.length, unique: [...new Set(vals)].length };
-                if (nums.length) {
-                    stats[h].min = Math.min(...nums).toFixed(2);
-                    stats[h].max = Math.max(...nums).toFixed(2);
-                    stats[h].mean = (nums.reduce((a,b) => a+b, 0) / nums.length).toFixed(2);
-                }
+                if (nums.length) { stats[h].min = Math.min(...nums).toFixed(2); stats[h].max = Math.max(...nums).toFixed(2); stats[h].mean = (nums.reduce((a,b) => a+b, 0) / nums.length).toFixed(2); }
             });
-
             const prompt = `你是一位资深数据分析师。请基于以下数据生成一份专业的中文数据分析报告，包含：1.数据概览 2.关键发现 3.数据质量评估 4.建议\n\n数据概览：${JSON.stringify(summary)}\n统计信息：${JSON.stringify(stats)}`;
-
             try {
                 const response = await fetch('https://excel-ai-backend.1091698303.workers.dev', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt })
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt })
                 });
                 const result = await response.json();
                 const text = result.choices?.[0]?.message?.content || result.report || JSON.stringify(result, null, 2);
-                content.innerHTML = `<div class="report"><div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:16px;">🤖 AI 智能分析报告</div>${text.replace(/\n/g, '<br>').replace(/#{1,3}\s+/g, '<h3>').replace(/<h3>([^<]+)<br>/g, '<h3>$1</h3>')}</div>`;
+                content.innerHTML = `<div class="report"><div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:16px;">🤖 AI 智能分析报告</div>${text.replace(/\n/g, '<br>')}</div>`;
             } catch (err) {
                 content.innerHTML = `<div class="report" style="color:#dc2626;">生成失败: ${err.message}<br>请检查 Worker 地址是否正确配置</div>`;
-            } finally {
-                btn.disabled = false;
-            }
+            } finally { btn.disabled = false; }
         }
 
         // ==================== 拖拽上传 ====================
         const dropZone = document.getElementById('dropZone');
         ['dragover','dragenter'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.add('dragover'); }));
-        ['dragleave','drop'].forEach(e => dropZone.addEventListener(e, ev => { 
-            ev.preventDefault(); dropZone.classList.remove('dragover'); 
-            if (e === 'drop' && ev.dataTransfer.files.length) handleFile(ev.dataTransfer.files[0]);
-        }));
+        ['dragleave','drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.remove('dragover'); if (e === 'drop' && ev.dataTransfer.files.length) handleFile(ev.dataTransfer.files[0]); }));
         dropZone.addEventListener('click', () => document.getElementById('fileInput').click());
-
         window.addEventListener('resize', () => chartInstance && chartInstance.resize());
     </script>
 </body>
