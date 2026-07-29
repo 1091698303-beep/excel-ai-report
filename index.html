@@ -244,6 +244,7 @@
                 <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">系统已智能推荐，如不正确请手动选择</div>
                 <div id="headerOptions"></div>
                 <div style="margin-top:16px;display:flex;gap:10px;">
+                    <button class="btn btn-success" onclick="goToPreview()">下一步 →</button>
                     <button class="btn btn-secondary btn-sm" onclick="goBackToDirection()">← 上一步</button>
                 </div>
             </div>
@@ -766,6 +767,48 @@
         }
         function goBackToDirection() { switchStep('step-direction'); }
         function goBackToHeader() { switchStep('step-header'); }
+        function goToPreview() {
+            // 生成预览表格
+            const headerRow = rawSheetData[selectedHeaderRow];
+            const previewHeaders = headerRow.map((h, idx) => {
+                const fixed = fixEncoding(String(h || '')).trim();
+                return fixed || `列${idx + 1}`;
+            });
+
+            const dataRows = rawSheetData.slice(selectedHeaderRow + 1);
+            const previewData = dataRows.slice(0, 5).map(row => {
+                const obj = {};
+                previewHeaders.forEach((h, i) => {
+                    obj[h] = fixEncoding(row[i]);
+                });
+                return obj;
+            });
+
+            // 渲染预览表格
+            const table = document.getElementById('previewTable');
+            if (previewData.length > 0) {
+                const cols = previewHeaders;
+                let html = '<thead><tr>' + cols.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+                previewData.forEach(row => {
+                    html += '<tr>' + cols.map(c => `<td>${row[c] !== undefined && row[c] !== null ? row[c] : ''}</td>`).join('') + '</tr>';
+                });
+                html += '</tbody>';
+                table.innerHTML = html;
+            } else {
+                table.innerHTML = '<tr><td style="text-align:center;color:#9ca3af;padding:20px;">无预览数据</td></tr>';
+            }
+
+            document.getElementById('dataSummary').textContent = 
+                `Sheet: ${selectedSheetName} | 表头: 第${selectedHeaderRow + 1}行 | 共 ${dataRows.length} 行 × ${previewHeaders.length} 列`;
+
+            if (isTransposed) {
+                document.getElementById('transposeBadge').classList.remove('hidden');
+            } else {
+                document.getElementById('transposeBadge').classList.add('hidden');
+            }
+
+            switchStep('step-preview');
+        }
 
         function resetUpload() {
             workbookGlobal = null;
