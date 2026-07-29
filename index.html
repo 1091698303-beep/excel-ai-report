@@ -278,46 +278,6 @@
             </div>
         </div>
 
-        <!-- 1.5 FTShare 金融数据增强 -->
-        <div class="card hidden" id="ftshareCard">
-            <h2><span class="icon">📈</span>1.5 FTShare 金融数据增强 <span class="badge badge-orange">可选</span></h2>
-            <p style="color: #6b7280; font-size: 13px; margin-bottom: 16px;">接入 FTShare MCP，自动获取 A股/港股/基金实时行情、财务指标等数据，合并到当前数据集</p>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label>股票代码（多个用逗号分隔）</label>
-                    <input type="text" id="stockCodes" placeholder="例如：300750, 600519, 000001" style="margin-top: 6px;">
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label>数据类型</label>
-                    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top: 8px;">
-                        <label style="display:flex;align-items:center;gap:6px;font-weight:normal;text-transform:none;letter-spacing: normal;font-size: 13px;cursor: pointer;">
-                            <input type="checkbox" id="ftQuote" checked style="accent-color: #2563eb;"> 实时行情
-                        </label>
-                        <label style="display:flex;align-items:center;gap:6px;font-weight:normal;text-transform:none;letter-spacing: normal;font-size: 13px;cursor: pointer;">
-                            <input type="checkbox" id="ftFinancial" style="accent-color: #2563eb;"> 财务指标
-                        </label>
-                        <label style="display:flex;align-items:center;gap:6px;font-weight:normal;text-transform:none;letter-spacing: normal;font-size: 13px;cursor: pointer;">
-                            <input type="checkbox" id="ftKline" style="accent-color: #2563eb;"> K线数据
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div style="margin-top: 16px; display: flex; gap: 10px; align-items: center;">
-                <button class="btn btn-orange" onclick="fetchFtshareData()">🔍 获取 FTShare 数据</button>
-                <button class="btn btn-sm btn-secondary" onclick="mergeFtshareToEngine()" id="mergeFtshareBtn" style="display:none;">➕ 合并到当前数据</button>
-                <span id="ftshareStatus" style="font-size: 13px; color: #6b7280;"></span>
-            </div>
-
-            <div id="ftshareResult" style="margin-top: 16px; display: none;">
-                <div style="background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; padding: 16px;">
-                    <div style="font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 10px;">📊 查询结果</div>
-                    <div class="table-wrap" style="max-height: 200px;"><table id="ftshareTable"></table></div>
-                </div>
-            </div>
-        </div>
-
         <!-- 2. 数据清洗 -->
         <div class="card hidden" id="cleanCard">
             <h2><span class="icon">🧹</span>2. 智能数据清洗 <span class="badge badge-purple">AlaSQL</span></h2>
@@ -475,7 +435,7 @@
         // ==================== 全局状态 ====================
         // 后端 Worker 地址：本地开发用 `wrangler dev` 默认 http://localhost:8787
         // 部署后改成你的 Worker 域名，例如 https://excel-ai-report.xxx.workers.dev
-        const WORKER_URL = 'https://ftshare-mcp-proxy.1091698303.workers.dev';
+        const WORKER_URL = 'http://localhost:8787';
         let engine = null;
         let originalData = [];
         let currentHeaders = [];
@@ -796,7 +756,6 @@
             showSections();
             refreshAll();
             populateSelects();
-            document.getElementById('ftshareCard').classList.remove('hidden');
             document.getElementById('cleanCard').scrollIntoView({ behavior: 'smooth' });
         }
 
@@ -1230,142 +1189,6 @@
             chartInstance.setOption(option);
         }
 
-        // ==================== FTShare MCP 数据增强 ====================
-        async function fetchFtshareData() {
-            const codes = document.getElementById('stockCodes').value.trim();
-            if (!codes) { alert('请输入股票代码'); return; }
-
-            const dataTypes = [];
-            if (document.getElementById('ftQuote').checked) dataTypes.push('quote');
-            if (document.getElementById('ftFinancial').checked) dataTypes.push('financial');
-            if (document.getElementById('ftKline').checked) dataTypes.push('kline');
-            if (dataTypes.length === 0) { alert('请至少选择一种数据类型'); return; }
-
-            const status = document.getElementById('ftshareStatus');
-            status.innerHTML = '<span class="loading"></span> 正在通过 MCP 获取数据...';
-
-            try {
-                const response = await fetch(FTSHARE_WORKER_URL + '/ftshare', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'fetchData', stockCodes: codes, dataTypes })
-                });
-                const result = await response.json();
-
-                if (!result.success) {
-                    status.innerHTML = '<span style="color:#dc2626;">❌ ' + (result.error || '获取失败') + '</span>';
-                    return;
-                }
-
-                ftshareData = result.data;
-                renderFtshareResult(ftshareData);
-                document.getElementById('ftshareResult').style.display = 'block';
-                document.getElementById('mergeFtshareBtn').style.display = 'inline-flex';
-                status.innerHTML = '<span style="color:#059669;">✅ 获取成功</span>';
-
-            } catch (err) {
-                status.innerHTML = '<span style="color:#dc2626;">❌ ' + err.message + '</span>';
-            }
-        }
-
-        function renderFtshareResult(data) {
-            const table = document.getElementById('ftshareTable');
-            if (!data || !data.stocks || !data.stocks.length) {
-                table.innerHTML = '<tr><td style="text-align:center;color:#9ca3af;padding:12px;">无数据</td></tr>';
-                return;
-            }
-
-            // 动态提取所有字段
-            const allKeys = new Set();
-            data.stocks.forEach(s => {
-                Object.values(s.data).forEach(v => {
-                    if (v && typeof v === 'object' && !v.error) {
-                        Object.keys(v).forEach(k => allKeys.add(k));
-                    }
-                });
-            });
-            const keys = Array.from(allKeys);
-
-            let html = '<thead><tr><th>股票代码</th><th>数据类型</th>' + keys.map(k => `<th>${k}</th>`).join('') + '</tr></thead><tbody>';
-            data.stocks.forEach(s => {
-                Object.entries(s.data).forEach(([type, val]) => {
-                    html += `<tr><td>${s.code}</td><td>${type}</td>`;
-                    if (val && typeof val === 'object' && !val.error) {
-                        keys.forEach(k => {
-                            const v = val[k];
-                            html += `<td>${v !== undefined && v !== null ? String(v).substring(0, 50) : '-'}</td>`;
-                        });
-                    } else {
-                        html += `<td colspan="${keys.length}" style="color:#dc2626;">${val?.error || '无数据'}</td>`;
-                    }
-                    html += '</tr>';
-                });
-            });
-            html += '</tbody>';
-            table.innerHTML = html;
-        }
-
-        function mergeFtshareToEngine() {
-            if (!ftshareData || !ftshareData.stocks) { alert('请先获取 FTShare 数据'); return; }
-            if (!engine) { alert('请先导入 Excel 数据'); return; }
-
-            // 把 FTShare 数据作为新列合并到 engine
-            // 策略：为每个股票代码的数据类型创建新列
-            const newCols = [];
-            ftshareData.stocks.forEach(s => {
-                Object.entries(s.data).forEach(([type, val]) => {
-                    if (val && typeof val === 'object' && !val.error) {
-                        Object.keys(val).forEach(k => {
-                            const colName = `${s.code}_${type}_${k}`;
-                            if (!newCols.includes(colName)) newCols.push(colName);
-                        });
-                    }
-                });
-            });
-
-            // 如果数据里已有股票代码列，尝试按行匹配
-            const codeCol = currentHeaders.find(h => /代码|code|股票|symbol/i.test(h));
-
-            engine.data.forEach(row => {
-                newCols.forEach(col => row[col] = '');
-
-                if (codeCol) {
-                    const rowCode = String(row[codeCol] || '').trim();
-                    const matched = ftshareData.stocks.find(s => s.code === rowCode || rowCode.includes(s.code));
-                    if (matched) {
-                        Object.entries(matched.data).forEach(([type, val]) => {
-                            if (val && typeof val === 'object' && !val.error) {
-                                Object.entries(val).forEach(([k, v]) => {
-                                    row[`${matched.code}_${type}_${k}`] = v;
-                                });
-                            }
-                        });
-                    }
-                }
-            });
-
-            // 如果没有代码列匹配，或者没匹配到，把第一只股票的数据作为默认值填到所有行
-            if (!codeCol) {
-                const firstStock = ftshareData.stocks[0];
-                if (firstStock) {
-                    engine.data.forEach(row => {
-                        Object.entries(firstStock.data).forEach(([type, val]) => {
-                            if (val && typeof val === 'object' && !val.error) {
-                                Object.entries(val).forEach(([k, v]) => {
-                                    row[`${firstStock.code}_${type}_${k}`] = v;
-                                });
-                            }
-                        });
-                    });
-                }
-            }
-
-            currentHeaders = Object.keys(engine.data[0] || {});
-            populateSelects();
-            refreshAll();
-            alert(`✅ 已合并 ${newCols.length} 列 FTShare 数据到当前数据集`);
-        }
-
         // AI 报告 - 经 Worker 后端（GLM + 乐享知识库）
         async function generateReport() {
             const btn = document.getElementById('reportBtn');
@@ -1386,7 +1209,7 @@
                 const response = await fetch(WORKER_URL + '/report', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ summary, stats, thoughts, ftshareData })
+                    body: JSON.stringify({ summary, stats, thoughts })
                 });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || ('请求失败 (' + response.status + ')'));
