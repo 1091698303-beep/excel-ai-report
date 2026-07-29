@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel 智能分析与 AI 报告生成平台 - 智能导入版</title>
+    <title>Excel 智能分析与 AI 报告生成平台 - 转置导入版</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/alasql@4"></script>
@@ -106,11 +106,10 @@
         .sql-result.success { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
         .sql-result.error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
 
-        /* 智能导入面板 */
-        .import-wizard { background: #fafafa; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; }
+        /* 导入向导 */
         .import-step { display: none; }
         .import-step.active { display: block; }
-        .step-indicator { display: flex; gap: 8px; margin-bottom: 20px; }
+        .step-indicator { display: flex; gap: 8px; margin-bottom: 20px; align-items: center; }
         .step-dot { width: 32px; height: 32px; border-radius: 50%; background: #e5e7eb; color: #6b7280; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; }
         .step-dot.active { background: #2563eb; color: white; }
         .step-dot.done { background: #059669; color: white; }
@@ -120,23 +119,31 @@
         .sheet-card.selected { border-color: #2563eb; background: #eff6ff; }
         .sheet-card .sheet-name { font-weight: 600; color: #111827; }
         .sheet-card .sheet-info { font-size: 12px; color: #6b7280; margin-top: 2px; }
-        .preview-table { border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
-        .preview-table th { background: #f0f9ff; color: #0369a1; }
-        .header-row-option { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border-radius: 8px; border: 2px solid #e5e7eb; cursor: pointer; margin-bottom: 6px; transition: all 0.15s; }
-        .header-row-option:hover { border-color: #3b82f6; }
-        .header-row-option.selected { border-color: #2563eb; background: #eff6ff; }
-        .header-row-option .row-num { font-size: 11px; color: #6b7280; background: #f3f4f6; padding: 2px 8px; border-radius: 4px; }
+
+        /* 数据方向选择 */
+        .direction-card { background: white; border-radius: 12px; padding: 24px; border: 2px solid #e5e7eb; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .direction-card:hover { border-color: #3b82f6; background: #f8fafc; }
+        .direction-card.selected { border-color: #2563eb; background: #eff6ff; }
+        .direction-card .dir-icon { font-size: 48px; margin-bottom: 12px; }
+        .direction-card .dir-title { font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 6px; }
+        .direction-card .dir-desc { font-size: 13px; color: #6b7280; line-height: 1.5; }
+        .direction-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+        @media (max-width: 640px) { .direction-grid { grid-template-columns: 1fr; } }
+
+        .mini-table { border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; font-size: 11px; margin-top: 12px; }
+        .mini-table th, .mini-table td { padding: 4px 8px; border: 1px solid #e5e7eb; }
+        .mini-table th { background: #f0f9ff; color: #0369a1; font-size: 10px; }
+
         .encoding-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
         .encoding-ok { background: #ecfdf5; color: #059669; }
         .encoding-warn { background: #fff7ed; color: #ea580c; }
-        .encoding-error { background: #fef2f2; color: #dc2626; }
     </style>
 <base target="_blank">
 </head>
 <body>
     <div class="container">
         <h1>📊 Excel 智能分析与 AI 报告生成平台</h1>
-        <p class="subtitle">智能导入 · 多Sheet识别 · 自动表头检测 · AlaSQL · AI报告</p>
+        <p class="subtitle">智能导入 · 多Sheet · 横竖向表头 · 转置 · AlaSQL · AI报告</p>
 
         <!-- 1. 智能文件导入 -->
         <div class="card" id="uploadCard">
@@ -148,7 +155,7 @@
                     <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
                     <div class="upload-icon">📂</div>
                     <div class="upload-text">点击或拖拽上传 Excel 文件</div>
-                    <div class="upload-hint">支持 .xlsx / .xls / .csv · 自动识别多工作表 · 智能检测表头</div>
+                    <div class="upload-hint">支持 .xlsx / .xls / .csv · 自动识别多工作表 · 支持横/竖向表头 · 自动转置</div>
                 </div>
                 <div class="progress hidden" id="progressBar"><div class="progress-bar" id="progressFill"></div></div>
                 <p id="fileInfo" style="margin-top: 12px; color: #6b7280; font-size: 13px;"></p>
@@ -161,9 +168,11 @@
                     <div style="color:#d1d5db">→</div>
                     <div><div class="step-dot active">2</div><div class="step-label">选Sheet</div></div>
                     <div style="color:#d1d5db">→</div>
-                    <div><div class="step-dot">3</div><div class="step-label">确认表头</div></div>
+                    <div><div class="step-dot">3</div><div class="step-label">选方向</div></div>
                     <div style="color:#d1d5db">→</div>
-                    <div><div class="step-dot">4</div><div class="step-label">预览导入</div></div>
+                    <div><div class="step-dot">4</div><div class="step-label">确认表头</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot">5</div><div class="step-label">预览导入</div></div>
                 </div>
                 <h3 style="font-size:14px;color:#374151;margin-bottom:12px;">📑 检测到多个工作表，请选择要导入的 Sheet：</h3>
                 <div id="sheetList"></div>
@@ -172,40 +181,91 @@
                 </div>
             </div>
 
-            <!-- 步骤 2: 确认表头行 -->
+            <!-- 步骤 2: 选择数据方向（新增！） -->
+            <div class="import-step" id="step-direction">
+                <div class="step-indicator">
+                    <div><div class="step-dot done">1</div><div class="step-label">上传</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot done">2</div><div class="step-label">选Sheet</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot active">3</div><div class="step-label">选方向</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot">4</div><div class="step-label">确认表头</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot">5</div><div class="step-label">预览导入</div></div>
+                </div>
+                <h3 style="font-size:14px;color:#374151;margin-bottom:4px;">📐 请选择数据的排列方向：</h3>
+                <p style="font-size:13px;color:#6b7280;margin-bottom:16px;">系统已自动推荐，如不正确请手动选择</p>
+
+                <div class="direction-grid">
+                    <div class="direction-card" id="dir-horizontal" onclick="selectDirection('horizontal')">
+                        <div class="dir-icon">➡️</div>
+                        <div class="dir-title">横向表头（常规）</div>
+                        <div class="dir-desc">第一行是列名，第一列是数据<br>如：日期 | 销售额 | 成本</div>
+                        <table class="mini-table" style="width:100%;margin-top:12px;">
+                            <tr><th>日期</th><th>销售额</th><th>成本</th></tr>
+                            <tr><td>2024-01</td><td>100</td><td>80</td></tr>
+                            <tr><td>2024-02</td><td>200</td><td>150</td></tr>
+                        </table>
+                    </div>
+                    <div class="direction-card" id="dir-vertical" onclick="selectDirection('vertical')">
+                        <div class="dir-icon">⬇️</div>
+                        <div class="dir-title">竖向表头（需转置）</div>
+                        <div class="dir-desc">第一列是列名，第一行是日期/类别<br>如：指标 ↓ 日期 →</div>
+                        <table class="mini-table" style="width:100%;margin-top:12px;">
+                            <tr><th></th><th>2024-01</th><th>2024-02</th></tr>
+                            <tr><td>销售额</td><td>100</td><td>200</td></tr>
+                            <tr><td>成本</td><td>80</td><td>150</td></tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="directionHint" style="display:none;margin-top:16px;padding:12px;background:#eff6ff;border-radius:8px;border:1px solid #bfdbfe;font-size:13px;color:#1e40af;"></div>
+
+                <div style="margin-top:16px;display:flex;gap:10px;">
+                    <button class="btn btn-secondary btn-sm" onclick="goBackToSheet()">← 上一步</button>
+                </div>
+            </div>
+
+            <!-- 步骤 3: 确认表头行 -->
             <div class="import-step" id="step-header">
                 <div class="step-indicator">
                     <div><div class="step-dot done">1</div><div class="step-label">上传</div></div>
                     <div style="color:#d1d5db">→</div>
                     <div><div class="step-dot done">2</div><div class="step-label">选Sheet</div></div>
                     <div style="color:#d1d5db">→</div>
-                    <div><div class="step-dot active">3</div><div class="step-label">确认表头</div></div>
+                    <div><div class="step-dot done">3</div><div class="step-label">选方向</div></div>
                     <div style="color:#d1d5db">→</div>
-                    <div><div class="step-dot">4</div><div class="step-label">预览导入</div></div>
+                    <div><div class="step-dot active">4</div><div class="step-label">确认表头</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot">5</div><div class="step-label">预览导入</div></div>
                 </div>
                 <h3 style="font-size:14px;color:#374151;margin-bottom:12px;">🔍 请选择哪一行是表头（列名）：</h3>
                 <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">系统已智能推荐，如不正确请手动选择</div>
                 <div id="headerOptions"></div>
                 <div style="margin-top:16px;display:flex;gap:10px;">
-                    <button class="btn btn-secondary btn-sm" onclick="goBackToSheet()">← 上一步</button>
+                    <button class="btn btn-secondary btn-sm" onclick="goBackToDirection()">← 上一步</button>
                 </div>
             </div>
 
-            <!-- 步骤 3: 预览并确认导入 -->
+            <!-- 步骤 4: 预览并确认导入 -->
             <div class="import-step" id="step-preview">
                 <div class="step-indicator">
                     <div><div class="step-dot done">1</div><div class="step-label">上传</div></div>
                     <div style="color:#d1d5db">→</div>
                     <div><div class="step-dot done">2</div><div class="step-label">选Sheet</div></div>
                     <div style="color:#d1d5db">→</div>
-                    <div><div class="step-dot done">3</div><div class="step-label">确认表头</div></div>
+                    <div><div class="step-dot done">3</div><div class="step-label">选方向</div></div>
                     <div style="color:#d1d5db">→</div>
-                    <div><div class="step-dot active">4</div><div class="step-label">预览导入</div></div>
+                    <div><div class="step-dot done">4</div><div class="step-label">确认表头</div></div>
+                    <div style="color:#d1d5db">→</div>
+                    <div><div class="step-dot active">5</div><div class="step-label">预览导入</div></div>
                 </div>
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
                     <h3 style="font-size:14px;color:#374151;">👁️ 数据预览（前 5 行）</h3>
-                    <span id="encodingStatus" class="encoding-badge encoding-ok">✓ 编码正常</span>
+                    <span id="encodingStatus" class="encoding-badge encoding-ok">✓ UTF-8</span>
                     <span id="dataSummary" style="font-size:13px;color:#6b7280;"></span>
+                    <span id="transposeBadge" class="badge badge-orange hidden">↔️ 已转置</span>
                 </div>
                 <div class="preview-table"><table id="previewTable"></table></div>
                 <div style="margin-top:16px;display:flex;gap:10px;">
@@ -378,8 +438,9 @@
         let workbookGlobal = null;
         let selectedSheetName = null;
         let selectedHeaderRow = 0;
+        let dataDirection = 'horizontal'; // 'horizontal' 或 'vertical'
         let rawSheetData = [];
-        let detectedEncoding = 'utf-8';
+        let isTransposed = false;
 
         // ==================== 智能导入模块 ====================
         function handleFile(e) {
@@ -396,10 +457,6 @@
                     const data = new Uint8Array(e.target.result);
                     updateProgress(50);
 
-                    // 检测编码
-                    detectedEncoding = detectEncoding(data);
-
-                    // 解析工作簿
                     const workbook = XLSX.read(data, { type: 'array', cellDates: true });
                     workbookGlobal = workbook;
                     updateProgress(80);
@@ -407,11 +464,10 @@
                     const sheetNames = workbook.SheetNames;
 
                     if (sheetNames.length === 1) {
-                        // 只有一个 Sheet，直接跳到表头检测
                         selectedSheetName = sheetNames[0];
-                        selectSheet(sheetNames[0]);
+                        loadSheetData(sheetNames[0]);
+                        autoDetectDirection();
                     } else {
-                        // 多个 Sheet，显示选择界面
                         showSheetSelection(sheetNames, workbook);
                     }
                     updateProgress(100);
@@ -423,54 +479,27 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // 编码检测
-        function detectEncoding(bytes) {
-            // 检查 UTF-8 BOM
-            if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
-                return 'utf-8-bom';
-            }
-            // 简单启发式：如果有很多连续的非 ASCII 字节，可能是 UTF-8
-            let utf8Score = 0, totalNonAscii = 0;
-            for (let i = 0; i < Math.min(bytes.length, 1000); i++) {
-                if (bytes[i] > 127) {
-                    totalNonAscii++;
-                    // UTF-8 多字节特征
-                    if ((bytes[i] & 0xE0) === 0xC0) utf8Score++;
-                    else if ((bytes[i] & 0xF0) === 0xE0) utf8Score++;
-                }
-            }
-            if (totalNonAscii > 0 && utf8Score / totalNonAscii > 0.5) return 'utf-8';
-            return 'latin-1'; // 默认回退
+        function loadSheetData(sheetName) {
+            const sheet = workbookGlobal.Sheets[sheetName];
+            rawSheetData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
         }
 
-        // 增强编码修复
         function fixEncoding(str) {
             if (typeof str !== 'string') return str;
             if (!str) return str;
-
-            // 如果已经包含中文，说明编码正确
             if (/[一-龥]/.test(str)) return str;
-
-            // 尝试 UTF-8 修复（Latin-1 误读为 UTF-8）
             try {
                 const bytes = new Uint8Array(str.length);
-                for (let i = 0; i < str.length; i++) {
-                    bytes[i] = str.charCodeAt(i) & 0xFF;
-                }
+                for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i) & 0xFF;
                 const fixed = new TextDecoder('utf-8').decode(bytes);
                 if (/[一-龥]/.test(fixed)) return fixed;
             } catch(e) {}
-
-            // 尝试 GBK 修复
             try {
                 const bytes = new Uint8Array(str.length);
-                for (let i = 0; i < str.length; i++) {
-                    bytes[i] = str.charCodeAt(i) & 0xFF;
-                }
+                for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i) & 0xFF;
                 const fixed = new TextDecoder('gbk').decode(bytes);
                 if (/[一-龥]/.test(fixed)) return fixed;
             } catch(e) {}
-
             return str;
         }
 
@@ -495,26 +524,113 @@
             switchStep('step-sheet');
         }
 
-        // 选择 Sheet
         function selectSheet(sheetName) {
             selectedSheetName = sheetName;
-            const sheet = workbookGlobal.Sheets[sheetName];
-
-            // 读取原始数据（不指定 header，先拿到纯数组）
-            rawSheetData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+            loadSheetData(sheetName);
 
             if (rawSheetData.length < 2) {
                 alert('该工作表数据太少，至少需要 2 行');
                 return;
             }
 
-            // 高亮选中的 sheet
             document.querySelectorAll('.sheet-card').forEach(card => {
                 card.classList.toggle('selected', card.dataset.sheet === sheetName);
             });
 
-            // 智能检测表头行
+            autoDetectDirection();
+        }
+
+        // 自动检测数据方向（横向 vs 竖向）
+        function autoDetectDirection() {
+            // 分析数据结构
+            const rowCount = rawSheetData.length;
+            const colCount = rawSheetData[0] ? rawSheetData[0].length : 0;
+
+            // 检测第一列是否更像表头
+            let firstColIsHeader = 0;
+            let firstRowIsHeader = 0;
+
+            // 检查第一行（横向表头候选）
+            const firstRow = rawSheetData[0] || [];
+            for (let cell of firstRow.slice(0, Math.min(5, firstRow.length))) {
+                const val = fixEncoding(String(cell || '')).trim();
+                if (!val) continue;
+                if (/[一-龥]/.test(val)) firstRowIsHeader += 2;
+                if (/^(日期|时间|名称|编号|金额|数量|价格|姓名|地址|电话|邮箱|状态|类型|类别|部门|地区|城市|省份|国家|指标|项目|产品|客户|订单|销售|成本|利润|收入|支出)/.test(val)) firstRowIsHeader += 3;
+                if (val.length < 10) firstRowIsHeader += 1;
+                if (!isNaN(Number(val)) && val !== '') firstRowIsHeader -= 2; // 数字不太像表头
+            }
+
+            // 检查第一列（竖向表头候选）
+            for (let i = 0; i < Math.min(5, rowCount); i++) {
+                const val = fixEncoding(String(rawSheetData[i][0] || '')).trim();
+                if (!val) continue;
+                if (/[一-龥]/.test(val)) firstColIsHeader += 2;
+                if (/^(日期|时间|名称|编号|金额|数量|价格|姓名|地址|电话|邮箱|状态|类型|类别|部门|地区|城市|省份|国家|指标|项目|产品|客户|订单|销售|成本|利润|收入|支出)/.test(val)) firstColIsHeader += 3;
+                if (val.length < 10) firstColIsHeader += 1;
+                if (!isNaN(Number(val)) && val !== '') firstColIsHeader -= 2;
+            }
+
+            // 检查第一行第一列是否为空（竖向表头常见特征：左上角是空的）
+            const topLeft = String(rawSheetData[0][0] || '').trim();
+            if (!topLeft || topLeft === '0') firstColIsHeader += 2;
+
+            // 判断方向
+            dataDirection = firstColIsHeader > firstRowIsHeader ? 'vertical' : 'horizontal';
+
+            showDirectionSelection();
+        }
+
+        // 显示方向选择
+        function showDirectionSelection() {
+            // 高亮推荐的方向
+            document.querySelectorAll('.direction-card').forEach(c => c.classList.remove('selected'));
+            document.getElementById('dir-' + dataDirection).classList.add('selected');
+
+            // 显示提示
+            const hint = document.getElementById('directionHint');
+            hint.style.display = 'block';
+            if (dataDirection === 'vertical') {
+                hint.innerHTML = '💡 <strong>系统检测到您的数据可能是竖向表头</strong>（第一列是字段名）。<br>选择"竖向表头"后，系统会自动将数据转置为常规格式。';
+            } else {
+                hint.innerHTML = '💡 <strong>系统检测到您的数据是常规横向表头</strong>（第一行是字段名）。<br>如不正确，请手动选择"竖向表头"。';
+            }
+
+            switchStep('step-direction');
+        }
+
+        function selectDirection(direction) {
+            dataDirection = direction;
+            document.querySelectorAll('.direction-card').forEach(c => c.classList.remove('selected'));
+            document.getElementById('dir-' + direction).classList.add('selected');
+
+            // 如果选择了竖向，先转置数据
+            if (direction === 'vertical') {
+                transposeData();
+            }
+
             showHeaderDetection();
+        }
+
+        // 矩阵转置
+        function transposeData() {
+            if (!rawSheetData || !rawSheetData.length) return;
+
+            const rows = rawSheetData.length;
+            const cols = Math.max(...rawSheetData.map(r => r.length));
+
+            // 创建转置后的矩阵
+            const transposed = [];
+            for (let c = 0; c < cols; c++) {
+                const newRow = [];
+                for (let r = 0; r < rows; r++) {
+                    newRow.push(rawSheetData[r][c] !== undefined ? rawSheetData[r][c] : '');
+                }
+                transposed.push(newRow);
+            }
+
+            rawSheetData = transposed;
+            isTransposed = true;
         }
 
         // 智能表头检测
@@ -548,17 +664,14 @@
             switchStep('step-header');
         }
 
-        // 智能检测哪一行是表头
         function detectHeaderRow(data) {
             if (data.length < 2) return 0;
-
             let bestRow = 0;
             let bestScore = -1;
 
             for (let i = 0; i < Math.min(5, data.length); i++) {
                 const row = data[i];
                 if (!row || row.length === 0) continue;
-
                 let score = 0;
                 const totalCells = row.length;
                 let textCount = 0, numCount = 0, emptyCount = 0;
@@ -571,18 +684,14 @@
                         numCount++;
                     } else {
                         textCount++;
-                        // 表头常见特征加分
-                        if (/[一-龥]/.test(val)) score += 2; // 中文
-                        if (/^(日期|时间|名称|编号|金额|数量|价格|姓名|地址|电话|邮箱|状态|类型|类别|部门|地区|城市|省份|国家)/.test(val)) score += 3;
-                        if (val.length < 15) score += 1; // 短文本更像列名
+                        if (/[一-龥]/.test(val)) score += 2;
+                        if (/^(日期|时间|名称|编号|金额|数量|价格|姓名|地址|电话|邮箱|状态|类型|类别|部门|地区|城市|省份|国家|指标|项目|产品|客户|订单|销售|成本|利润|收入|支出)/.test(val)) score += 3;
+                        if (val.length < 15) score += 1;
                     }
                 }
 
-                // 表头通常是文本为主
                 if (textCount > numCount) score += 3;
-                // 空值不能太多
                 if (emptyCount / totalCells > 0.3) score -= 5;
-                // 第一行优先（如果没有明显特征）
                 if (i === 0) score += 1;
 
                 if (score > bestScore) {
@@ -590,11 +699,9 @@
                     bestRow = i;
                 }
             }
-
             return bestRow;
         }
 
-        // 选择表头行
         function selectHeaderRow(rowIndex) {
             selectedHeaderRow = rowIndex;
             document.querySelectorAll('.header-row-option').forEach(opt => {
@@ -606,14 +713,12 @@
 
         // 确认导入
         function confirmImport() {
-            // 提取表头
             const headerRow = rawSheetData[selectedHeaderRow];
             currentHeaders = headerRow.map((h, idx) => {
                 const fixed = fixEncoding(String(h || '')).trim();
                 return fixed || `列${idx + 1}`;
             });
 
-            // 提取数据（表头行之后）
             const dataRows = rawSheetData.slice(selectedHeaderRow + 1);
             originalData = dataRows.map(row => {
                 const obj = {};
@@ -628,28 +733,20 @@
                 return;
             }
 
-            // 初始化引擎
             engine = new DataCleaningEngine(originalData, currentHeaders);
-
-            // 显示编码状态
-            const encBadge = document.getElementById('encodingStatus');
-            if (detectedEncoding === 'utf-8' || detectedEncoding === 'utf-8-bom') {
-                encBadge.className = 'encoding-badge encoding-ok';
-                encBadge.textContent = '✓ UTF-8 编码';
-            } else {
-                encBadge.className = 'encoding-badge encoding-warn';
-                encBadge.textContent = '⚠ 编码已自动修复';
-            }
 
             document.getElementById('dataSummary').textContent = 
                 `Sheet: ${selectedSheetName} | 表头: 第${selectedHeaderRow + 1}行 | ${originalData.length} 行 × ${currentHeaders.length} 列`;
 
-            // 显示后续功能区域
+            if (isTransposed) {
+                document.getElementById('transposeBadge').classList.remove('hidden');
+            } else {
+                document.getElementById('transposeBadge').classList.add('hidden');
+            }
+
             showSections();
             refreshAll();
             populateSelects();
-
-            // 滚动到清洗区域
             document.getElementById('cleanCard').scrollIntoView({ behavior: 'smooth' });
         }
 
@@ -659,36 +756,30 @@
             document.getElementById(stepId).classList.add('active');
         }
 
-        function goBackToUpload() {
-            resetUpload();
-            switchStep('step-upload');
-        }
-
-        function goBackToSheet() {
+        function goBackToUpload() { resetUpload(); switchStep('step-upload'); }
+        function goBackToSheet() { 
             if (workbookGlobal && workbookGlobal.SheetNames.length > 1) {
                 switchStep('step-sheet');
             } else {
                 goBackToUpload();
             }
         }
-
-        function goBackToHeader() {
-            switchStep('step-header');
-        }
+        function goBackToDirection() { switchStep('step-direction'); }
+        function goBackToHeader() { switchStep('step-header'); }
 
         function resetUpload() {
             workbookGlobal = null;
             selectedSheetName = null;
             selectedHeaderRow = 0;
+            dataDirection = 'horizontal';
             rawSheetData = [];
+            isTransposed = false;
             document.getElementById('fileInput').value = '';
             document.getElementById('progressBar').classList.add('hidden');
             document.getElementById('progressFill').style.width = '0%';
         }
 
-        function updateProgress(pct) {
-            document.getElementById('progressFill').style.width = pct + '%';
-        }
+        function updateProgress(pct) { document.getElementById('progressFill').style.width = pct + '%'; }
 
         // ==================== 数据清洗引擎 ====================
         class DataCleaningEngine {
@@ -1047,7 +1138,7 @@
             chartInstance.setOption(option);
         }
 
-        // AI 报告 - 前端直连 GLM（workers.dev 被墙）
+        // AI 报告 - 前端直连 GLM
         async function generateReport() {
             const btn = document.getElementById('reportBtn');
             const content = document.getElementById('reportContent');
