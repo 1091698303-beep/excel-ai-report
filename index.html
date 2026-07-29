@@ -716,7 +716,7 @@
             });
             const prompt = `你是一位资深数据分析师。请基于以下数据生成一份专业的中文数据分析报告，包含：1.数据概览 2.关键发现 3.数据质量评估 4.建议\n\n数据概览：${JSON.stringify(summary)}\n统计信息：${JSON.stringify(stats)}`;
             try {
-                const response = await fetch('https://excel-ai-backend.1091698303.workers.dev', {
+              const response = await fetch('https://stock-cleaner.1091698303.workers.dev', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt })
                 });
                 const result = await response.json();
