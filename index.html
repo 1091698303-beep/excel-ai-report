@@ -1657,6 +1657,125 @@
         }
 
         // ==================== FTShare MCP 数据增强 ====================
+        // FTShare 英文字段 → 中文表头(财务/行情/K线 + 通用)
+        const FTSHARE_FIELD_CN = {
+            // 通用/标识
+            stock_code: '股票代码',
+            stock_name: '股票名称',
+            symbol: '证券代码',
+            code: '代码',
+            data_type: '数据类型',
+            year: '年份',
+            report_type: '报告类型',
+            report_type_cn: '报告类型名称',
+            publish_date: '公告日期',
+            report_form_type: '报表口径',
+            // 利润表核心
+            t_revenue: '营业总收入',
+            t_revenue_yoy: '营业总收入同比(%)',
+            revenue: '营业收入',
+            revenue_yoy: '营业收入同比(%)',
+            cost: '营业成本',
+            cost_yoy: '营业成本同比(%)',
+            t_cost: '营业总成本',
+            t_cost_yoy: '营业总成本同比(%)',
+            sale_expense: '销售费用',
+            sale_expense_yoy: '销售费用同比(%)',
+            manag_expense: '管理费用',
+            manag_expense_yoy: '管理费用同比(%)',
+            manage_expense: '管理费用',
+            manage_expense_yoy: '管理费用同比(%)',
+            rd_expense: '研发费用',
+            rd_expense_yoy: '研发费用同比(%)',
+            research_expense: '研发费用',
+            financial_cost: '财务费用',
+            financial_cost_yoy: '财务费用同比(%)',
+            finance_cost: '财务费用',
+            finance_expense: '财务费用',
+            operate_profit: '营业利润',
+            operate_profit_yoy: '营业利润同比(%)',
+            profit: '营业利润',
+            profit_yoy: '营业利润同比(%)',
+            t_profit: '利润总额',
+            t_profit_yoy: '利润总额同比(%)',
+            total_profit: '利润总额',
+            n_profit: '净利润',
+            n_profit_yoy: '净利润同比(%)',
+            net_profit: '净利润',
+            net_profit_yoy: '净利润同比(%)',
+            parcomp_n_profit: '归母净利润',
+            parcomp_n_profit_yoy: '归母净利润同比(%)',
+            parent_n_profit: '归母净利润',
+            minority_profit: '少数股东损益',
+            basic_eps: '基本每股收益',
+            diluted_eps: '稀释每股收益',
+            gross_profit: '毛利润',
+            gross_margin: '毛利率(%)',
+            // 行情/分时
+            avg_price: '均价',
+            price: '最新价',
+            last_price: '最新价',
+            open: '开盘价',
+            high: '最高价',
+            low: '最低价',
+            close: '收盘价',
+            pre_close: '昨收',
+            change: '涨跌额',
+            pct_chg: '涨跌幅(%)',
+            change_pct: '涨跌幅(%)',
+            turnover: '成交额',
+            volume: '成交量',
+            amount: '成交额',
+            ts_ms: '时间戳(毫秒)',
+            ts_millis: '时间戳(毫秒)',
+            ts_millis_open: '开盘时间戳',
+            trade_date: '交易日期',
+            datetime: '时间',
+            time: '时间',
+            // 资产/负债常见(合并财务扩展时用)
+            total_assets: '总资产',
+            total_liab: '总负债',
+            total_equity: '股东权益合计',
+            current_assets: '流动资产',
+            current_liab: '流动负债',
+            cash: '货币资金',
+            inv: '存货',
+            ar: '应收账款',
+            // 兼容旧占位
+            raw: '原始响应',
+            error: '错误信息',
+        };
+        const FTSHARE_TYPE_CN = {
+            quote: '行情',
+            financial: '财务年报',
+            kline: 'K线',
+        };
+        function ftFieldToCn(key) {
+            if (key == null) return key;
+            const k = String(key);
+            if (FTSHARE_FIELD_CN[k]) return FTSHARE_FIELD_CN[k];
+            // 未知字段: snake_case 转可读中文前缀保留英文, 避免硬丢列
+            return k;
+        }
+        function translateFtshareRecord(rec, dataType) {
+            if (!rec || typeof rec !== 'object') return rec;
+            const out = {};
+            Object.keys(rec).forEach(k => {
+                if (k === 'raw' && (rec[k] === '' || rec[k] == null)) return;
+                let val = rec[k];
+                // 报告类型值也中文化(有 report_type_cn 时以中文为准展示)
+                if (k === 'report_type' && typeof val === 'string') {
+                    const map = { annual: '年报', q1: '一季报', q2: '半年报', q3: '三季报', year: '年报', h1: '半年报' };
+                    val = map[val.toLowerCase()] || val;
+                }
+                if (k === 'data_type' && typeof val === 'string') {
+                    val = FTSHARE_TYPE_CN[val] || val;
+                }
+                out[ftFieldToCn(k)] = val;
+            });
+            return out;
+        }
+
         // 把 Worker 返回的 data[type] 规范成「有效记录数组」
         // 过滤: error、空 {raw:""}、只含 raw 的废包, 避免表格只剩 stock_code/data_type/raw
         // financial: 前端兜底只留年报 + 近7年(与 worker/proxy 规则一致, 旧 Worker 也能用)
@@ -1770,19 +1889,27 @@
                 renderFtshareResult(ftshareData);
                 document.getElementById('ftshareResult').style.display = 'block';
 
-                // FTShare 作为数据入口:把获取的数据展平为数据集,进入分析流程
+                // FTShare 作为数据入口:把获取的数据展平为数据集,进入分析流程(字段中文化)
                 const rows = [];
-                const keySet = new Set(['stock_code', 'data_type']);
+                const keySet = new Set([ftFieldToCn('stock_code'), ftFieldToCn('data_type')]);
                 const errMsgs = [];
                 (ftshareData.stocks || []).forEach(s => {
                     Object.entries(s.data || {}).forEach(([type, val]) => {
                         const { records, error } = normalizeFtshareRecords(val, type);
                         if (error) errMsgs.push(`${s.code}/${type}: ${error}`);
                         records.forEach(rec => {
-                            const row = { stock_code: s.code, data_type: type };
-                            Object.keys(rec).forEach(k => {
-                                if (k === 'raw' && (rec[k] === '' || rec[k] == null)) return;
-                                row[k] = rec[k];
+                            const row = {
+                                [ftFieldToCn('stock_code')]: s.code,
+                                [ftFieldToCn('data_type')]: FTSHARE_TYPE_CN[type] || type,
+                            };
+                            const cnRec = translateFtshareRecord(rec, type);
+                            Object.keys(cnRec).forEach(k => {
+                                // 顶层已写的代码/类型不覆盖(与 rec 内字段冲突时保留顶层)
+                                if (k === ftFieldToCn('stock_code') || k === ftFieldToCn('data_type')) {
+                                    if (row[k] == null || row[k] === '') row[k] = cnRec[k];
+                                } else {
+                                    row[k] = cnRec[k];
+                                }
                                 keySet.add(k);
                             });
                             rows.push(row);
@@ -1790,7 +1917,10 @@
                     });
                 });
                 if (rows.length) {
-                    currentHeaders = Array.from(keySet);
+                    // 表头优先: 股票代码/数据类型 固定在前, 其余按出现顺序
+                    const preferred = [ftFieldToCn('stock_code'), ftFieldToCn('data_type'), ftFieldToCn('stock_name'), ftFieldToCn('year')];
+                    const rest = Array.from(keySet).filter(k => !preferred.includes(k));
+                    currentHeaders = preferred.filter(k => keySet.has(k)).concat(rest);
                     originalData = rows;
                     engine = new DataCleaningEngine(originalData, currentHeaders);
                     showSections();
@@ -1817,23 +1947,27 @@
                 return;
             }
 
-            // 收集所有记录的字段; 过滤空 raw 废包
+            // 收集所有记录的字段; 过滤空 raw; 表头中文化
             const allKeys = new Set();
-            const rows = []; // { code, type, rec }
+            const rows = []; // { code, type, recCn }
             data.stocks.forEach(s => {
                 Object.entries(s.data || {}).forEach(([type, val]) => {
                     const { records, error } = normalizeFtshareRecords(val, type);
                     records.forEach(rec => {
-                        Object.keys(rec).forEach(k => {
-                            if (k === 'raw' && (rec[k] === '' || rec[k] == null)) return;
-                            allKeys.add(k);
-                        });
-                        rows.push({ code: s.code, type, rec });
+                        const cnRec = translateFtshareRecord(rec, type);
+                        Object.keys(cnRec).forEach(k => allKeys.add(k));
+                        rows.push({ code: s.code, type: FTSHARE_TYPE_CN[type] || type, rec: cnRec });
                     });
-                    if (error && !records.length) rows.push({ code: s.code, type, rec: { error } });
+                    if (error && !records.length) rows.push({ code: s.code, type: FTSHARE_TYPE_CN[type] || type, rec: { [ftFieldToCn('error')]: error } });
                 });
             });
-            const keys = Array.from(allKeys);
+            // 优先展示常见财务列顺序
+            const preferred = ['股票名称', '年份', '报告类型名称', '公告日期', '报表口径', '营业总收入', '营业总收入同比(%)', '营业成本', '净利润', '归母净利润'].map(ftFieldToCn);
+            // preferred already Chinese literals — use as-is after translation map self-consist
+            const preferredCn = ['股票名称', '年份', '报告类型名称', '公告日期', '报表口径', '营业总收入', '营业总收入同比(%)', '营业成本', '净利润', '归母净利润'];
+            const rest = Array.from(allKeys).filter(k => !preferredCn.includes(k) && k !== ftFieldToCn('error'));
+            const keys = preferredCn.filter(k => allKeys.has(k)).concat(rest);
+            if (allKeys.has(ftFieldToCn('error'))) keys.push(ftFieldToCn('error'));
 
             if (!rows.length) {
                 table.innerHTML = '<tr><td style="text-align:center;color:#9ca3af;padding:12px;">无有效数据（接口可能返回空 raw，请重试）</td></tr>';
@@ -1843,8 +1977,8 @@
             let html = '<thead><tr><th>股票代码</th><th>数据类型</th>' + keys.map(k => `<th>${k}</th>`).join('') + '</tr></thead><tbody>';
             rows.forEach(r => {
                 html += `<tr><td>${r.code}</td><td>${r.type}</td>`;
-                if (r.rec.error) {
-                    html += `<td colspan="${keys.length || 1}" style="color:#dc2626;">${r.rec.error}</td>`;
+                if (r.rec[ftFieldToCn('error')] && keys.every(k => r.rec[k] === undefined || k === ftFieldToCn('error'))) {
+                    html += `<td colspan="${keys.length || 1}" style="color:#dc2626;">${r.rec[ftFieldToCn('error')]}</td>`;
                 } else {
                     keys.forEach(k => {
                         const v = r.rec[k];
