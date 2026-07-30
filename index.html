@@ -56,6 +56,9 @@
         .stat-delta.down { color: #059669; }
         .clean-layout { display: grid; grid-template-columns: 360px 1fr; gap: 24px; }
         @media (max-width: 1024px) { .clean-layout { grid-template-columns: 1fr; } }
+        /* 初始入口:左右并排(Excel 导入 / FTShare 调用) */
+        .entry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+        @media (max-width: 1024px) { .entry-grid { grid-template-columns: 1fr; } }
         .rule-panel { background: #f9fafb; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; }
         .rule-panel h3 { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
         .form-group { margin-bottom: 14px; }
@@ -146,6 +149,8 @@
         <h1>📊 Excel 智能分析与 AI 报告生成平台</h1>
         <p class="subtitle">智能导入 · 多Sheet · 横竖向表头 · 转置 · AlaSQL · AI报告</p>
 
+        <!-- 初始入口:左 Excel 导入 / 右 FTShare 调用,二选一进入分析 -->
+        <div class="entry-grid">
         <!-- 1. 智能文件导入 -->
         <div class="card" id="uploadCard">
             <h2><span class="icon">📁</span>1. 智能 Excel 导入</h2>
@@ -278,8 +283,8 @@
             </div>
         </div>
 
-        <!-- 1.5 FTShare 金融数据增强 -->
-        <div class="card hidden" id="ftshareCard">
+        <!-- 1.5 FTShare 金融数据(独立入口,与 Excel 并列) -->
+        <div class="card" id="ftshareCard">
             <h2><span class="icon">📈</span>1.5 FTShare 金融数据增强 <span class="badge badge-orange">可选</span></h2>
             <p style="color: #6b7280; font-size: 13px; margin-bottom: 16px;">接入 FTShare MCP，自动获取 A股/港股/基金实时行情、财务指标等数据，合并到当前数据集</p>
 
@@ -316,6 +321,7 @@
                     <div class="table-wrap" style="max-height: 200px;"><table id="ftshareTable"></table></div>
                 </div>
             </div>
+        </div>
         </div>
 
         <!-- 2. 数据清洗 -->
@@ -1260,8 +1266,33 @@
                 ftshareData = result.data;
                 renderFtshareResult(ftshareData);
                 document.getElementById('ftshareResult').style.display = 'block';
-                document.getElementById('mergeFtshareBtn').style.display = 'inline-flex';
-                status.innerHTML = '<span style="color:#059669;">✅ 获取成功</span>';
+                status.innerHTML = '<span style="color:#059669;">✅ 获取成功,已载入数据集</span>';
+
+                // FTShare 作为数据入口:把获取的数据展平为数据集,进入分析流程
+                const rows = [];
+                const keySet = new Set(['stock_code', 'data_type']);
+                ftshareData.stocks.forEach(s => {
+                    Object.entries(s.data).forEach(([type, val]) => {
+                        const list = Array.isArray(val) ? val : (val && typeof val === 'object' && !val.error ? [val] : []);
+                        list.forEach(rec => {
+                            if (rec && typeof rec === 'object' && !rec.error) {
+                                const row = { stock_code: s.code, data_type: type };
+                                Object.keys(rec).forEach(k => { row[k] = rec[k]; keySet.add(k); });
+                                rows.push(row);
+                            }
+                        });
+                    });
+                });
+                if (rows.length) {
+                    currentHeaders = Array.from(keySet);
+                    originalData = rows;
+                    engine = new DataCleaningEngine(originalData, currentHeaders);
+                    showSections();
+                    refreshAll();
+                    populateSelects();
+                    document.getElementById('dataSummary').textContent = `FTShare | ${originalData.length} 行 × ${currentHeaders.length} 列`;
+                    document.getElementById('cleanCard').scrollIntoView({ behavior: 'smooth' });
+                }
 
             } catch (err) {
                 status.innerHTML = '<span style="color:#dc2626;">❌ ' + err.message + '</span>';
