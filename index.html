@@ -74,6 +74,16 @@
         .rule-tag .remove-rule { color: #9ca3af; cursor: pointer; padding: 4px; border-radius: 4px; }
         .rule-tag .remove-rule:hover { color: #dc2626; background: #fef2f2; }
         .action-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
+        .data-op-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+        .data-op-bar select, .data-op-bar input { padding: 6px 10px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 13px; background: white; }
+        th.sortable-th { cursor: pointer; user-select: none; white-space: nowrap; }
+        th.sortable-th:hover { color: #2563eb; }
+        th.sortable-th .sort-ind { color: #9ca3af; font-size: 11px; margin-left: 2px; }
+        td.row-ops { width: 70px; text-align: center; white-space: nowrap; }
+        .row-del-btn { border: none; background: #fef2f2; color: #dc2626; border-radius: 6px; padding: 2px 8px; font-size: 12px; cursor: pointer; }
+        .row-del-btn:hover { background: #fee2e2; }
+        .col-del-btn { border: none; background: transparent; color: #9ca3af; cursor: pointer; font-size: 11px; margin-left: 4px; padding: 0 2px; }
+        .col-del-btn:hover { color: #dc2626; }
         .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px; }
         .compare-box { background: #f9fafb; border-radius: 10px; padding: 16px; border: 1px solid #e5e7eb; }
         .compare-box h4 { font-size: 13px; font-weight: 600; color: #6b7280; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
@@ -342,6 +352,9 @@
                                 <option value="">选择规则...</option>
                                 <option value="removeDuplicates">🔄 删除重复行</option>
                                 <option value="removeEmptyRows">🗑️ 删除空行</option>
+                                <option value="dropColumns">🗑️ 自定义删除列</option>
+                                <option value="deleteRows">🗑️ 自定义删除行(按行号)</option>
+                                <option value="sortBy">↕️ 按列排序(小→大/大→小)</option>
                                 <option value="trim">✂️ 去除首尾空格</option>
                                 <option value="convertType">🔢 智能类型转换</option>
                                 <option value="fillMissing">💧 缺失值填充</option>
@@ -369,6 +382,22 @@
                             <div class="toolbar-sep"></div>
                             <span id="rowCountDisplay" style="font-size: 13px; color: #6b7280;"></span>
                         </div>
+                        <div class="data-op-bar">
+                            <button class="btn btn-sm btn-danger" onclick="deleteSelectedRows()">🗑️ 删除勾选行</button>
+                            <button class="btn btn-sm btn-secondary" onclick="selectAllVisibleRows(true)">全选当前页</button>
+                            <button class="btn btn-sm btn-secondary" onclick="selectAllVisibleRows(false)">取消全选</button>
+                            <div class="toolbar-sep"></div>
+                            <select id="quickSortColumn" style="min-width:120px"></select>
+                            <select id="quickSortOrder">
+                                <option value="asc">升序(小→大)</option>
+                                <option value="desc">降序(大→小)</option>
+                            </select>
+                            <button class="btn btn-sm" onclick="quickSortByColumn()">↕️ 排序</button>
+                            <div class="toolbar-sep"></div>
+                            <select id="quickDropColumn" style="min-width:120px"></select>
+                            <button class="btn btn-sm btn-danger" onclick="quickDropColumn()">🗑️ 删除该列</button>
+                        </div>
+                        <p style="font-size:12px;color:#9ca3af;margin:0 0 8px;">提示：可勾选行后删除；点表头可快速按该列排序；规则里也可添加「删除列/删除行/排序」并批量执行。支持撤销。</p>
                         <div class="table-wrap"><table id="dataTable"></table></div>
                         <div class="compare-grid" id="compareSection" style="margin-top: 20px;">
                             <div class="compare-box before"><h4>🔴 清洗前</h4><div id="beforeStats"></div></div>
@@ -885,6 +914,7 @@
         class DataCleaningEngine {
             constructor(data, headers) {
                 this.originalData = JSON.parse(JSON.stringify(data));
+                this.originalHeaders = [...headers];
                 this.data = JSON.parse(JSON.stringify(data));
                 this.headers = [...headers];
                 this.history = [];
@@ -892,20 +922,78 @@
                 this.beforeSnapshot = JSON.parse(JSON.stringify(data));
                 this.saveState();
             }
+            // 快照同时保存 data + headers, 支持删列后撤销
             saveState() {
                 this.history = this.history.slice(0, this.historyIndex + 1);
-                this.history.push(JSON.parse(JSON.stringify(this.data)));
+                this.history.push({
+                    data: JSON.parse(JSON.stringify(this.data)),
+                    headers: [...this.headers],
+                });
                 this.historyIndex++;
                 if (this.history.length > 30) { this.history.shift(); this.historyIndex--; }
             }
-            undo() { if (this.historyIndex > 0) { this.historyIndex--; this.data = JSON.parse(JSON.stringify(this.history[this.historyIndex])); } return this.data; }
-            redo() { if (this.historyIndex < this.history.length - 1) { this.historyIndex++; this.data = JSON.parse(JSON.stringify(this.history[this.historyIndex])); } return this.data; }
-            reset() { this.data = JSON.parse(JSON.stringify(this.originalData)); this.beforeSnapshot = JSON.parse(JSON.stringify(this.originalData)); this.history = []; this.historyIndex = -1; this.saveState(); return this.data; }
-            setData(newData) { this.beforeSnapshot = JSON.parse(JSON.stringify(this.data)); this.data = JSON.parse(JSON.stringify(newData)); this.saveState(); }
+            _restoreSnapshot(snap) {
+                if (!snap) return;
+                // 兼容旧历史(纯数组)
+                if (Array.isArray(snap)) {
+                    this.data = JSON.parse(JSON.stringify(snap));
+                    return;
+                }
+                this.data = JSON.parse(JSON.stringify(snap.data || []));
+                if (Array.isArray(snap.headers) && snap.headers.length) {
+                    this.headers = [...snap.headers];
+                }
+            }
+            undo() {
+                if (this.historyIndex > 0) {
+                    this.historyIndex--;
+                    this._restoreSnapshot(this.history[this.historyIndex]);
+                    this._syncGlobalHeaders();
+                }
+                return this.data;
+            }
+            redo() {
+                if (this.historyIndex < this.history.length - 1) {
+                    this.historyIndex++;
+                    this._restoreSnapshot(this.history[this.historyIndex]);
+                    this._syncGlobalHeaders();
+                }
+                return this.data;
+            }
+            reset() {
+                this.data = JSON.parse(JSON.stringify(this.originalData));
+                this.headers = [...this.originalHeaders];
+                this.beforeSnapshot = JSON.parse(JSON.stringify(this.originalData));
+                this.history = [];
+                this.historyIndex = -1;
+                this.saveState();
+                this._syncGlobalHeaders();
+                return this.data;
+            }
+            setData(newData) {
+                this.beforeSnapshot = JSON.parse(JSON.stringify(this.data));
+                this.data = JSON.parse(JSON.stringify(newData));
+                if (newData && newData.length) {
+                    this.headers = Object.keys(newData[0]);
+                    this._syncGlobalHeaders();
+                }
+                this.saveState();
+            }
+            _syncGlobalHeaders() {
+                try {
+                    if (typeof currentHeaders !== 'undefined') {
+                        currentHeaders = [...this.headers];
+                        if (typeof populateSelects === 'function') populateSelects();
+                    }
+                } catch (e) { /* ignore */ }
+            }
             executeRule(rule) {
                 switch(rule.type) {
                     case 'removeDuplicates': this.removeDuplicates(rule.columns); break;
                     case 'removeEmptyRows': this.removeEmptyRows(rule.columns); break;
+                    case 'dropColumns': this.dropColumns(rule.columns); break;
+                    case 'deleteRows': this.deleteRowsByIndices(rule.indices); break;
+                    case 'sortBy': this.sortBy(rule.column, rule.order); break;
                     case 'trim': this.trim(rule.columns); break;
                     case 'convertType': this.convertType(rule.columns, rule.targetType); break;
                     case 'fillMissing': this.fillMissing(rule.column, rule.strategy, rule.fillValue); break;
@@ -915,6 +1003,45 @@
                     case 'standardize': this.standardize(rule.column, rule.format); break;
                 }
                 this.saveState();
+                this._syncGlobalHeaders();
+            }
+            // 删除指定列(可多列)
+            dropColumns(columns) {
+                const cols = (columns && columns.length) ? columns : [];
+                if (!cols.length) return;
+                const drop = new Set(cols);
+                this.headers = this.headers.filter(h => !drop.has(h));
+                this.data.forEach(row => { cols.forEach(c => { delete row[c]; }); });
+            }
+            // 按行号删除(1-based, 支持 "1,3,5" 或 [1,3,5])
+            deleteRowsByIndices(indices) {
+                let idxs = [];
+                if (Array.isArray(indices)) {
+                    idxs = indices.map(n => Number(n)).filter(n => Number.isFinite(n));
+                } else if (typeof indices === 'string') {
+                    idxs = indices.split(/[,，\s]+/).map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0);
+                }
+                // 转 0-based, 去重, 从大到小删避免错位
+                const zeroBased = [...new Set(idxs.map(n => Math.floor(n) - 1))]
+                    .filter(i => i >= 0 && i < this.data.length)
+                    .sort((a, b) => b - a);
+                zeroBased.forEach(i => this.data.splice(i, 1));
+            }
+            // 按列排序: asc 小→大 / desc 大→小; 数值优先, 空值垫底
+            sortBy(column, order = 'asc') {
+                if (!column) return;
+                const dir = order === 'desc' ? -1 : 1;
+                const isEmpty = (v) => v === '' || v === null || v === undefined;
+                this.data.sort((a, b) => {
+                    const va = a[column], vb = b[column];
+                    if (isEmpty(va) && isEmpty(vb)) return 0;
+                    if (isEmpty(va)) return 1;
+                    if (isEmpty(vb)) return -1;
+                    const na = Number(va), nb = Number(vb);
+                    const bothNum = !isNaN(na) && !isNaN(nb) && String(va).trim() !== '' && String(vb).trim() !== '';
+                    if (bothNum) return (na - nb) * dir;
+                    return String(va).localeCompare(String(vb), 'zh-CN', { numeric: true, sensitivity: 'base' }) * dir;
+                });
             }
             removeDuplicates(columns) { const cols = columns && columns.length ? columns : this.headers; const seen = new Set(); this.data = this.data.filter(row => { const key = cols.map(c => String(row[c] || '')).join('||'); if (seen.has(key)) return false; seen.add(key); return true; }); }
             removeEmptyRows(columns) { const cols = columns && columns.length ? columns : this.headers; this.data = this.data.filter(row => cols.some(c => { const v = row[c]; return v !== undefined && v !== null && v !== ''; })); }
@@ -975,9 +1102,107 @@
             }
         }
 
+        // 快捷栏: 删行 / 删列 / 排序(即时执行, 走引擎历史可撤销)
+        function syncDataOpSelects() {
+            const opts = currentHeaders.map(h => `<option value="${h}">${h}</option>`).join('');
+            const sortSel = document.getElementById('quickSortColumn');
+            const dropSel = document.getElementById('quickDropColumn');
+            if (sortSel) {
+                const prev = sortSel.value;
+                sortSel.innerHTML = opts;
+                if (prev && currentHeaders.includes(prev)) sortSel.value = prev;
+            }
+            if (dropSel) {
+                const prev = dropSel.value;
+                dropSel.innerHTML = opts;
+                if (prev && currentHeaders.includes(prev)) dropSel.value = prev;
+            }
+        }
+        function deleteSelectedRows() {
+            if (!engine) return;
+            const checks = document.querySelectorAll('#dataTable tbody input.row-check:checked');
+            if (!checks.length) { alert('请先勾选要删除的行'); return; }
+            // 行号是 data 中的真实 0-based 索引(data-idx)
+            const idxs = Array.from(checks).map(c => Number(c.getAttribute('data-idx'))).filter(n => Number.isFinite(n));
+            // 转 1-based 给引擎
+            engine.beforeSnapshot = JSON.parse(JSON.stringify(engine.data));
+            engine.deleteRowsByIndices(idxs.map(i => i + 1));
+            engine.saveState();
+            engine._syncGlobalHeaders();
+            refreshAll();
+        }
+        function selectAllVisibleRows(on) {
+            document.querySelectorAll('#dataTable tbody input.row-check').forEach(c => { c.checked = !!on; });
+        }
+        function quickSortByColumn() {
+            if (!engine) return;
+            const col = document.getElementById('quickSortColumn')?.value;
+            const order = document.getElementById('quickSortOrder')?.value || 'asc';
+            if (!col) { alert('请选择排序列'); return; }
+            engine.beforeSnapshot = JSON.parse(JSON.stringify(engine.data));
+            engine.sortBy(col, order);
+            engine.saveState();
+            refreshAll();
+        }
+        function quickDropColumn() {
+            if (!engine) return;
+            const col = document.getElementById('quickDropColumn')?.value;
+            if (!col) { alert('请选择要删除的列'); return; }
+            if (currentHeaders.length <= 1) { alert('至少保留一列'); return; }
+            if (!confirm(`确定删除列「${col}」？可用撤销恢复。`)) return;
+            engine.beforeSnapshot = JSON.parse(JSON.stringify(engine.data));
+            engine.dropColumns([col]);
+            engine.saveState();
+            engine._syncGlobalHeaders();
+            refreshAll();
+        }
+        function deleteRowByIndex(idx) {
+            if (!engine) return;
+            if (!confirm(`确定删除第 ${idx + 1} 行？`)) return;
+            engine.beforeSnapshot = JSON.parse(JSON.stringify(engine.data));
+            engine.deleteRowsByIndices([idx + 1]);
+            engine.saveState();
+            refreshAll();
+        }
+        function sortByHeaderClick(col) {
+            if (!engine || !col) return;
+            // 连续点同一列: 升序→降序切换
+            const key = '__lastSortCol';
+            const orderKey = '__lastSortOrder';
+            let order = 'asc';
+            if (window[key] === col && window[orderKey] === 'asc') order = 'desc';
+            window[key] = col;
+            window[orderKey] = order;
+            engine.beforeSnapshot = JSON.parse(JSON.stringify(engine.data));
+            engine.sortBy(col, order);
+            engine.saveState();
+            const sortSel = document.getElementById('quickSortColumn');
+            const orderSel = document.getElementById('quickSortOrder');
+            if (sortSel) sortSel.value = col;
+            if (orderSel) orderSel.value = order;
+            refreshAll();
+        }
+        function dropColumnByHeader(col) {
+            if (!engine || !col) return;
+            if (currentHeaders.length <= 1) { alert('至少保留一列'); return; }
+            if (!confirm(`确定删除列「${col}」？`)) return;
+            engine.beforeSnapshot = JSON.parse(JSON.stringify(engine.data));
+            engine.dropColumns([col]);
+            engine.saveState();
+            engine._syncGlobalHeaders();
+            refreshAll();
+        }
+
         // ==================== UI 函数 ====================
         function showSections() { ['cleanCard', 'verifyCard', 'analysisCard', 'reportCard'].forEach(id => document.getElementById(id).classList.remove('hidden')); }
-        function populateSelects() { ['verifyColumn', 'xAxis', 'yAxis'].forEach(id => { const sel = document.getElementById(id); sel.innerHTML = currentHeaders.map(h => `<option value="${h}">${h}</option>`).join(''); }); }
+        function populateSelects() {
+            ['verifyColumn', 'xAxis', 'yAxis'].forEach(id => {
+                const sel = document.getElementById(id);
+                if (!sel) return;
+                sel.innerHTML = currentHeaders.map(h => `<option value="${h}">${h}</option>`).join('');
+            });
+            syncDataOpSelects();
+        }
         function switchTab(tab) {
             document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
@@ -997,6 +1222,9 @@
             const colMulti = `<select id="paramColumns" multiple style="height:80px">${currentHeaders.map(h => `<option value="${h}">${h}</option>`).join('')}</select><div style="font-size:11px;color:#9ca3af;margin-top:4px;">按住 Ctrl/Cmd 多选，不选则应用到所有列</div>`;
             switch(type) {
                 case 'removeDuplicates': case 'removeEmptyRows': case 'trim': html = `<div class="form-group"><label>指定列（不选=全部）</label>${colMulti}</div>`; break;
+                case 'dropColumns': html = `<div class="form-group"><label>要删除的列（可多选）</label>${colMulti}</div><div style="font-size:11px;color:#9ca3af;">也可用右侧预览表：勾选行删除、点表头排序、列旁 ✕ 删列</div>`; break;
+                case 'deleteRows': html = `<div class="form-group"><label>行号（从 1 开始）</label><input type="text" id="paramRowIndices" placeholder="例如：1,3,5 或 2 5 8"></div><div style="font-size:11px;color:#9ca3af;">也可用表格左侧勾选后点「删除勾选行」</div>`; break;
+                case 'sortBy': html = `<div class="form-group"><label>排序列</label>${colSelect}</div><div class="form-group"><label>顺序</label><select id="paramSortOrder"><option value="asc">升序 (小 → 大)</option><option value="desc">降序 (大 → 小)</option></select></div>`; break;
                 case 'convertType': html = `<div class="form-group"><label>目标列（不选=全部）</label>${colMulti}</div><div class="form-group"><label>目标类型</label><select id="paramTargetType"><option value="number">数值 (Number)</option><option value="date">日期 (Date)</option><option value="string">文本 (String)</option><option value="currency">货币 (Currency)</option></select></div>`; break;
                 case 'fillMissing': html = `<div class="form-group"><label>目标列</label>${colSelect}</div><div class="form-group"><label>填充策略</label><select id="paramStrategy" onchange="onStrategyChange()"><option value="mean">均值填充</option><option value="median">中位数填充</option><option value="mode">众数填充</option><option value="forward">前向填充</option><option value="backward">后向填充</option><option value="fixed">固定值填充</option></select></div><div class="form-group" id="fixedValueGroup" style="display:none"><label>固定值</label><input type="text" id="paramFillValue" placeholder="输入填充值"></div>`; break;
                 case 'removeOutliers': html = `<div class="form-group"><label>目标列（数值型）</label>${colSelect}</div><div class="form-group"><label>检测方法</label><select id="paramMethod"><option value="iqr">IQR 四分位距 (1.5×IQR)</option><option value="3sigma">3σ 原则</option><option value="zscore">Z-Score (|z|>3)</option></select></div>`; break;
@@ -1017,6 +1245,18 @@
             const getMulti = (id) => Array.from(document.getElementById(id)?.selectedOptions || []).map(o => o.value);
             switch(type) {
                 case 'removeDuplicates': case 'removeEmptyRows': case 'trim': rule.columns = getMulti('paramColumns'); break;
+                case 'dropColumns':
+                    rule.columns = getMulti('paramColumns');
+                    if (!rule.columns.length) { alert('请至少选择一列要删除'); return; }
+                    break;
+                case 'deleteRows':
+                    rule.indices = getVal('paramRowIndices') || '';
+                    if (!String(rule.indices).trim()) { alert('请填写要删除的行号，如 1,3,5'); return; }
+                    break;
+                case 'sortBy':
+                    rule.column = getVal('paramColumn');
+                    rule.order = getVal('paramSortOrder') || 'asc';
+                    break;
                 case 'convertType': rule.columns = getMulti('paramColumns'); rule.targetType = getVal('paramTargetType'); break;
                 case 'fillMissing': rule.column = getVal('paramColumn'); rule.strategy = getVal('paramStrategy'); rule.fillValue = getVal('paramFillValue'); break;
                 case 'removeOutliers': rule.column = getVal('paramColumn'); rule.method = getVal('paramMethod'); break;
@@ -1033,11 +1273,18 @@
         function renderRuleList() {
             const container = document.getElementById('ruleList');
             if (!pendingRules.length) { container.innerHTML = '<div style="color: #9ca3af; font-size: 12px; text-align: center; padding: 20px;">暂无规则，请从上方添加</div>'; return; }
-            const typeNames = { removeDuplicates: '删除重复行', removeEmptyRows: '删除空行', trim: '去除首尾空格', convertType: '类型转换', fillMissing: '缺失值填充', removeOutliers: '异常值剔除', replace: '查找替换', filter: '条件过滤', standardize: '数据标准化' };
+            const typeNames = {
+                removeDuplicates: '删除重复行', removeEmptyRows: '删除空行',
+                dropColumns: '自定义删除列', deleteRows: '自定义删除行', sortBy: '按列排序',
+                trim: '去除首尾空格', convertType: '类型转换', fillMissing: '缺失值填充',
+                removeOutliers: '异常值剔除', replace: '查找替换', filter: '条件过滤', standardize: '数据标准化'
+            };
             container.innerHTML = pendingRules.map((r, i) => {
                 let desc = '';
                 if (r.column) desc += `列: ${r.column}`;
                 if (r.columns && r.columns.length) desc += `列: ${r.columns.join(', ')}`;
+                if (r.indices) desc += `行号: ${r.indices}`;
+                if (r.order) desc += ` | ${r.order === 'desc' ? '降序' : '升序'}`;
                 if (r.strategy) desc += ` | ${r.strategy}`;
                 if (r.condition) desc += ` | ${r.condition} ${r.value || ''}`;
                 if (r.format) desc += ` | ${r.format}`;
@@ -1055,7 +1302,14 @@
             refreshAll();
         }
         function resetAll() { if (!engine) return; engine.reset(); pendingRules = []; renderRuleList(); refreshAll(); }
-        function refreshAll() { showData(); updateCleanStats(); updateCompareStats(); refreshSQLStats(); }
+        function refreshAll() {
+            if (engine && engine.headers && engine.headers.length) currentHeaders = [...engine.headers];
+            showData();
+            updateCleanStats();
+            updateCompareStats();
+            refreshSQLStats();
+            populateSelects();
+        }
 
         // SQL
         function quoteCol(col) { if (/[一-龥]/.test(col)) return '`' + col + '`'; return col; }
@@ -1146,32 +1400,46 @@
             const showDiff = document.getElementById('showDiff').checked;
             const before = engine.beforeSnapshot;
             const data = engine.data;
-            let html = '<thead><tr>' + currentHeaders.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+            // 表头同步自 engine(删列后一致)
+            if (engine.headers && engine.headers.length) currentHeaders = [...engine.headers];
+            const lastSortCol = window.__lastSortCol;
+            const lastSortOrder = window.__lastSortOrder;
+            const colCount = currentHeaders.length + 1; // +操作列
+            let html = '<thead><tr><th style="width:70px">选择</th>' + currentHeaders.map(h => {
+                const ind = (lastSortCol === h) ? (lastSortOrder === 'desc' ? ' ↓' : ' ↑') : '';
+                const safeH = String(h).replace(/'/g, "\\'");
+                return `<th class="sortable-th" title="点击按此列排序" onclick="sortByHeaderClick('${safeH}')">${h}<span class="sort-ind">${ind}</span>`
+                    + `<button class="col-del-btn" title="删除此列" onclick="event.stopPropagation(); dropColumnByHeader('${safeH}')">✕</button></th>`;
+            }).join('') + '</tr></thead><tbody>';
             data.slice(0, 100).forEach((row, idx) => {
                 const beforeRow = before[idx];
-                html += '<tr>' + currentHeaders.map(h => {
+                html += `<tr><td class="row-ops"><input type="checkbox" class="row-check" data-idx="${idx}"> `
+                    + `<button class="row-del-btn" title="删除此行" onclick="deleteRowByIndex(${idx})">删</button></td>`;
+                html += currentHeaders.map(h => {
                     const val = row[h];
                     let cellClass = '';
                     if (showDiff && beforeRow && beforeRow[h] !== val) cellClass = 'changed-cell';
                     return `<td class="${cellClass}">${val !== undefined && val !== null ? val : ''}</td>`;
                 }).join('') + '</tr>';
             });
-            if (data.length > 100) html += `<tr><td colspan="${currentHeaders.length}" style="text-align:center;color:#9ca3af;padding:16px;">... 还有 ${data.length - 100} 行 ...</td></tr>`;
+            if (data.length > 100) html += `<tr><td colspan="${colCount}" style="text-align:center;color:#9ca3af;padding:16px;">... 还有 ${data.length - 100} 行 ...</td></tr>`;
             html += '</tbody>';
             table.innerHTML = html;
-            document.getElementById('rowCountDisplay').textContent = `显示前 100 行 / 共 ${data.length} 行`;
+            document.getElementById('rowCountDisplay').textContent = `显示前 100 行 / 共 ${data.length} 行 · ${currentHeaders.length} 列`;
+            syncDataOpSelects();
         }
         function updateCleanStats() {
             if (!engine) return;
             const data = engine.data;
             const before = engine.beforeSnapshot || [];
             const removed = before.length - data.length;
+            const headers = engine.headers && engine.headers.length ? engine.headers : currentHeaders;
             let totalEmpty = 0, totalDup = 0;
-            data.forEach(row => { currentHeaders.forEach(h => { if (row[h] === '' || row[h] === null || row[h] === undefined) totalEmpty++; }); });
+            data.forEach(row => { headers.forEach(h => { if (row[h] === '' || row[h] === null || row[h] === undefined) totalEmpty++; }); });
             const seen = new Set(); data.forEach(row => { const key = JSON.stringify(row); if (seen.has(key)) totalDup++; else seen.add(key); });
             document.getElementById('cleanStats').innerHTML = `
                 <div class="stat-item"><div class="stat-value">${data.length}</div><div class="stat-label">当前行数</div>${removed > 0 ? `<div class="stat-delta down">↓ 已删除 ${removed} 行</div>` : ''}</div>
-                <div class="stat-item"><div class="stat-value">${currentHeaders.length}</div><div class="stat-label">总列数</div></div>
+                <div class="stat-item"><div class="stat-value">${headers.length}</div><div class="stat-label">总列数</div></div>
                 <div class="stat-item"><div class="stat-value" style="color:${totalEmpty>0?'#dc2626':'#059669'}">${totalEmpty}</div><div class="stat-label">空值数量</div></div>
                 <div class="stat-item"><div class="stat-value" style="color:${totalDup>0?'#dc2626':'#059669'}">${totalDup}</div><div class="stat-label">重复行数</div></div>
                 <div class="stat-item"><div class="stat-value">${engine.historyIndex}</div><div class="stat-label">操作步数</div></div>
