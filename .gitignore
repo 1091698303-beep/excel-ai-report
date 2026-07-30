@@ -1,0 +1,11 @@
+# 本地开发文件(勿提交,含 API Key)
+proxy.py
+__pycache__/
+*.pyc
+
+# 系统/编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

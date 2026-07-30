@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Excel 智能分析与 AI 报告生成平台 - 转置导入版</title>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="./xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/alasql@4"></script>
     <style>
@@ -1367,7 +1367,7 @@
             const content = document.getElementById('reportContent');
             const thoughts = (document.getElementById('reportThoughts')?.value || '').trim();
             btn.disabled = true;
-            content.innerHTML = '<div class="report">正在结合乐享知识库与你的要求生成报告<span class="loading"></span></div>';
+            content.innerHTML = '<div class="report">正在分析数据并生成报告<span class="loading"></span></div>';
             const data = engine ? engine.data : originalData;
             const summary = { rowCount: data.length, colCount: currentHeaders.length, columns: currentHeaders };
             const stats = {};
@@ -1377,18 +1377,27 @@
                 stats[h] = { type: nums.length > vals.length * 0.7 ? 'numeric' : 'text', count: vals.length, unique: [...new Set(vals)].length };
                 if (nums.length) { stats[h].min = Math.min(...nums).toFixed(2); stats[h].max = Math.max(...nums).toFixed(2); stats[h].mean = (nums.reduce((a,b) => a+b, 0) / nums.length).toFixed(2); }
             });
+            const dataCtx = `数据概览：${JSON.stringify(summary)}\n统计信息：${JSON.stringify(stats)}`;
+            const prompt = thoughts ? `请基于以下数据生成报告，并严格按照下面的要求来写：\n\n${dataCtx}\n\n【报告要求】\n${thoughts}` : `请分析以下数据并生成报告：\n\n${dataCtx}`;
             try {
-                const response = await fetch(WORKER_URL + '/report', {
+                const response = await fetch('http://localhost:8091/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ summary, stats, thoughts, ftshareData })
+                    body: JSON.stringify({
+                        model: 'glm-5.2',
+                        messages: [
+                            { role: 'system', content: '你是一位专业的数据分析师，擅长从数据中发现洞察并生成结构化报告。' },
+                            { role: 'user', content: prompt }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 8000
+                    })
                 });
                 const result = await response.json();
-                if (!response.ok) throw new Error(result.error || ('请求失败 (' + response.status + ')'));
-                const text = result.report || JSON.stringify(result, null, 2);
+                const text = result.choices?.[0]?.message?.content || result.report || JSON.stringify(result, null, 2);
                 content.innerHTML = `<div class="report"><div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:16px;">🤖 AI 智能分析报告</div>${String(text).replace(/\n/g, '<br>')}</div>`;
             } catch (err) {
-                content.innerHTML = `<div class="report" style="color:#dc2626;">生成失败: ${err.message}<br><br>请确认：① WORKER_URL 指向运行中的 Worker（本地用 <code>wrangler dev</code>，默认 http://localhost:8787）；② 已在 Worker 配置 GLM_API_KEY 与乐享 LEXIANG_APP_KEY / LEXIANG_APP_SECRET / LEXIANG_STAFF_ID。</div>`;
+                content.innerHTML = `<div class="report" style="color:#dc2626;">生成失败: ${err.message}<br><br>请确认本地 AI 代理已启动：<code>python proxy.py</code>（默认 http://localhost:8091）</div>`;
             } finally { btn.disabled = false; }
         }
 
