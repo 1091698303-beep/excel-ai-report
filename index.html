@@ -467,9 +467,9 @@
         <!-- 5. AI 报告 -->
         <div class="card hidden" id="reportCard">
             <h2><span class="icon">🤖</span>5. AI 智能报告生成</h2>
-            <p style="color: #6b7280; font-size: 14px; margin-bottom: 16px;">基于清洗后的数据，并参考乐享知识库，自动生成专业的数据分析报告</p>
+            <p style="color: #6b7280; font-size: 14px; margin-bottom: 16px;">完全按下方「报告要求」与乐享知识库内容输出，不套固定角色或报告框架</p>
             <div class="form-group" style="margin-bottom: 16px;">
-                <label>💡 你的想法 / 报告要求（可选，但会显著影响结果）</label>
+                <label>💡 报告要求（决定最终写法与侧重点）</label>
                 <textarea id="reportThoughts" placeholder="例如：重点分析销售额下滑的原因，并给出可落地的改进建议；面向管理层汇报，语言简洁、结论先行。"></textarea>
             </div>
             <button class="btn" id="reportBtn" onclick="generateReport()">🚀 生成 AI 分析报告</button>
@@ -481,6 +481,8 @@
         // ==================== 全局状态 ====================
         // 后端 Worker 地址：本地开发用 `wrangler dev` 默认 http://localhost:8787
         // 部署后改成你的 Worker 域名，例如 https://excel-ai-report.xxx.workers.dev
+        // 本地优先: proxy.py 的 /ftshare(更稳,无空 raw); 失败再回退 Cloudflare Worker
+        const LOCAL_PROXY = 'http://localhost:8091';
         const WORKER_URL = 'https://ftshare-mcp-proxy.1091698303.workers.dev';
         let engine = null;
         let originalData = [];
@@ -1237,6 +1239,41 @@
         }
 
         // ==================== FTShare MCP 数据增强 ====================
+        // 把 Worker 返回的 data[type] 规范成「有效记录数组」
+        // 过滤: error、空 {raw:""}、只含 raw 的废包, 避免表格只剩 stock_code/data_type/raw
+        function normalizeFtshareRecords(val) {
+            if (val == null) return { records: [], error: null };
+            if (val && typeof val === 'object' && val.error) return { records: [], error: String(val.error) };
+            const list = Array.isArray(val) ? val : [val];
+            const records = [];
+            for (const rec of list) {
+                if (!rec || typeof rec !== 'object' || rec.error) continue;
+                const keys = Object.keys(rec);
+                // 空 raw 占位: { raw: "" } / { raw: null }
+                if (keys.length === 1 && keys[0] === 'raw') {
+                    const raw = rec.raw;
+                    if (typeof raw === 'string' && raw.trim()) {
+                        try {
+                            const parsed = JSON.parse(raw);
+                            const nested = normalizeFtshareRecords(parsed);
+                            records.push(...nested.records);
+                        } catch { /* skip */ }
+                    }
+                    continue;
+                }
+                // 丢掉无意义 raw 字段, 保留其余业务列
+                if ('raw' in rec) {
+                    const cleaned = { ...rec };
+                    if (cleaned.raw === '' || cleaned.raw == null) delete cleaned.raw;
+                    if (!Object.keys(cleaned).length) continue;
+                    records.push(cleaned);
+                } else {
+                    records.push(rec);
+                }
+            }
+            return { records, error: null };
+        }
+
         async function fetchFtshareData() {
             const codes = document.getElementById('stockCodes').value.trim();
             if (!codes) { alert('请输入股票代码'); return; }
@@ -1251,12 +1288,27 @@
             status.innerHTML = '<span class="loading"></span> 正在通过 MCP 获取数据...';
 
             try {
-                const response = await fetch(WORKER_URL + '/ftshare', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'fetchData', stockCodes: codes, dataTypes })
-                });
-                const result = await response.json();
+                const reqBody = JSON.stringify({ action: 'fetchData', stockCodes: codes, dataTypes });
+                async function postFtshare(base) {
+                    const response = await fetch(base + '/ftshare', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: reqBody
+                    });
+                    if (!response.ok) throw new Error((base.includes('localhost') ? '本地代理' : 'Worker') + ' HTTP ' + response.status);
+                    return response.json();
+                }
+                let result;
+                try {
+                    result = await postFtshare(LOCAL_PROXY);
+                } catch (localErr) {
+                    // 本地代理未启动时回退线上 Worker
+                    try {
+                        result = await postFtshare(WORKER_URL);
+                    } catch (remoteErr) {
+                        throw new Error('本地代理失败(' + localErr.message + '); Worker 也失败(' + remoteErr.message + ')。请先运行 python proxy.py');
+                    }
+                }
 
                 if (!result.success) {
                     status.innerHTML = '<span style="color:#dc2626;">❌ ' + (result.error || '获取失败') + '</span>';
@@ -1266,20 +1318,23 @@
                 ftshareData = result.data;
                 renderFtshareResult(ftshareData);
                 document.getElementById('ftshareResult').style.display = 'block';
-                status.innerHTML = '<span style="color:#059669;">✅ 获取成功,已载入数据集</span>';
 
                 // FTShare 作为数据入口:把获取的数据展平为数据集,进入分析流程
                 const rows = [];
                 const keySet = new Set(['stock_code', 'data_type']);
-                ftshareData.stocks.forEach(s => {
-                    Object.entries(s.data).forEach(([type, val]) => {
-                        const list = Array.isArray(val) ? val : (val && typeof val === 'object' && !val.error ? [val] : []);
-                        list.forEach(rec => {
-                            if (rec && typeof rec === 'object' && !rec.error) {
-                                const row = { stock_code: s.code, data_type: type };
-                                Object.keys(rec).forEach(k => { row[k] = rec[k]; keySet.add(k); });
-                                rows.push(row);
-                            }
+                const errMsgs = [];
+                (ftshareData.stocks || []).forEach(s => {
+                    Object.entries(s.data || {}).forEach(([type, val]) => {
+                        const { records, error } = normalizeFtshareRecords(val);
+                        if (error) errMsgs.push(`${s.code}/${type}: ${error}`);
+                        records.forEach(rec => {
+                            const row = { stock_code: s.code, data_type: type };
+                            Object.keys(rec).forEach(k => {
+                                if (k === 'raw' && (rec[k] === '' || rec[k] == null)) return;
+                                row[k] = rec[k];
+                                keySet.add(k);
+                            });
+                            rows.push(row);
                         });
                     });
                 });
@@ -1291,7 +1346,12 @@
                     refreshAll();
                     populateSelects();
                     document.getElementById('dataSummary').textContent = `FTShare | ${originalData.length} 行 × ${currentHeaders.length} 列`;
+                    status.innerHTML = '<span style="color:#059669;">✅ 获取成功,已载入 ' + rows.length + ' 行</span>';
                     document.getElementById('cleanCard').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    status.innerHTML = '<span style="color:#dc2626;">❌ 无有效数据行'
+                        + (errMsgs.length ? ' (' + errMsgs.slice(0, 3).join('; ') + ')' : '，请换代码或勾选其他数据类型后重试')
+                        + '</span>';
                 }
 
             } catch (err) {
@@ -1306,25 +1366,26 @@
                 return;
             }
 
-            // 收集所有记录的字段;支持 data[type] 为数组(多行)或单对象
+            // 收集所有记录的字段; 过滤空 raw 废包
             const allKeys = new Set();
             const rows = []; // { code, type, rec }
             data.stocks.forEach(s => {
-                Object.entries(s.data).forEach(([type, val]) => {
-                    const list = Array.isArray(val) ? val : (val && typeof val === 'object' && !val.error ? [val] : []);
-                    list.forEach(rec => {
-                        if (rec && typeof rec === 'object' && !rec.error) {
-                            Object.keys(rec).forEach(k => allKeys.add(k));
-                            rows.push({ code: s.code, type, rec });
-                        }
+                Object.entries(s.data || {}).forEach(([type, val]) => {
+                    const { records, error } = normalizeFtshareRecords(val);
+                    records.forEach(rec => {
+                        Object.keys(rec).forEach(k => {
+                            if (k === 'raw' && (rec[k] === '' || rec[k] == null)) return;
+                            allKeys.add(k);
+                        });
+                        rows.push({ code: s.code, type, rec });
                     });
-                    if (val && val.error && !list.length) rows.push({ code: s.code, type, rec: { error: val.error } });
+                    if (error && !records.length) rows.push({ code: s.code, type, rec: { error } });
                 });
             });
             const keys = Array.from(allKeys);
 
             if (!rows.length) {
-                table.innerHTML = '<tr><td style="text-align:center;color:#9ca3af;padding:12px;">无数据</td></tr>';
+                table.innerHTML = '<tr><td style="text-align:center;color:#9ca3af;padding:12px;">无有效数据（接口可能返回空 raw，请重试）</td></tr>';
                 return;
             }
 
@@ -1406,13 +1467,14 @@
             alert(`✅ 已合并 ${newCols.length} 列 FTShare 数据到当前数据集`);
         }
 
-        // AI 报告 - 经 Worker 后端（GLM + 乐享知识库）
+        // AI 报告：仅按「报告要求」框 + 乐享知识库内容输出（无固定角色/报告框架）
+        // 乐享内容优先取 window.__LEXIANG_KB__（可由外部注入），否则为空
         async function generateReport() {
             const btn = document.getElementById('reportBtn');
             const content = document.getElementById('reportContent');
             const thoughts = (document.getElementById('reportThoughts')?.value || '').trim();
             btn.disabled = true;
-            content.innerHTML = '<div class="report">正在分析数据并生成报告<span class="loading"></span></div>';
+            content.innerHTML = '<div class="report">正在按你的要求生成报告<span class="loading"></span></div>';
             const data = engine ? engine.data : originalData;
             const summary = { rowCount: data.length, colCount: currentHeaders.length, columns: currentHeaders };
             const stats = {};
@@ -1422,16 +1484,35 @@
                 stats[h] = { type: nums.length > vals.length * 0.7 ? 'numeric' : 'text', count: vals.length, unique: [...new Set(vals)].length };
                 if (nums.length) { stats[h].min = Math.min(...nums).toFixed(2); stats[h].max = Math.max(...nums).toFixed(2); stats[h].mean = (nums.reduce((a,b) => a+b, 0) / nums.length).toFixed(2); }
             });
-            const dataCtx = `数据概览：${JSON.stringify(summary)}\n统计信息：${JSON.stringify(stats)}`;
-            const prompt = thoughts ? `请基于以下数据生成报告，并严格按照下面的要求来写：\n\n${dataCtx}\n\n【报告要求】\n${thoughts}` : `请分析以下数据并生成报告：\n\n${dataCtx}`;
+            // 样例行（最多 30 行），便于按用户要求写具体内容
+            const sampleRows = (data || []).slice(0, 30);
+            const lexiangKb = (typeof window !== 'undefined' && window.__LEXIANG_KB__)
+                ? String(window.__LEXIANG_KB__).trim()
+                : '';
+            // 只拼数据 + 要求框 + 乐享；不设「你是…数据分析师」等角色
+            const parts = [];
+            parts.push('【数据概览】\n' + JSON.stringify(summary, null, 2));
+            parts.push('【字段统计】\n' + JSON.stringify(stats, null, 2));
+            if (sampleRows.length) {
+                parts.push('【数据样例（最多30行）】\n' + JSON.stringify(sampleRows, null, 2));
+            }
+            if (thoughts) {
+                parts.push('【报告要求】\n' + thoughts + '\n\n请严格按上述【报告要求】输出；不要套用固定报告模板，不要自行设定身份或角色。');
+            } else {
+                parts.push('【报告要求】\n（用户未填写）请仅基于上方数据客观整理输出；不要套用固定报告模板，不要自行设定身份或角色。');
+            }
+            if (lexiangKb) {
+                parts.push('【乐享知识库参考】\n' + lexiangKb + '\n\n撰写时结合上述乐享知识库内容；与【报告要求】冲突时以【报告要求】为准。');
+            }
+            const prompt = parts.join('\n\n');
             try {
                 const response = await fetch('http://localhost:8091/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         model: 'glm-5.2',
+                        // 不再发送 system 角色限定（去掉「你是一位…数据分析师」）
                         messages: [
-                            { role: 'system', content: '你是一位专业的数据分析师，擅长从数据中发现洞察并生成结构化报告。' },
                             { role: 'user', content: prompt }
                         ],
                         temperature: 0.7,
