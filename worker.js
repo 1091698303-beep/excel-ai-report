@@ -1,62 +1,131 @@
-// Cloudflare Worker - AI 报告生成后端
-// 你需要把下面的 API_KEY 替换成你的 GLM-5.2 API Key
+// Cloudflare Worker - excel-ai-report 后端
+// /ftshare  : 转发到 FTShare HTTP API(https://market.ft.tech/gateway/),无认证
+//             按前端 dataTypes(quote/financial/kline)调对应接口,自动转换股票代码格式
+// /chat     : 兼容旧版 GLM 直连(占位,前端 AI 报告已改走本地 proxy.py,这里保留备用)
 
-const API_KEY = '你的_GLM_5.2_API_Key';  // ← 改成你的真实 Key
-const API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';  // GLM API 地址，根据实际调整
+const FTSHARE_BASE = 'https://market.ft.tech/gateway/';
+
+// 6 位代码 -> 带交易所后缀的 symbol(600519 -> 600519.SH, 000001 -> 000001.SZ)
+function toSymbol(code) {
+  code = String(code || '').trim().toUpperCase();
+  if (code.includes('.')) return code; // 已带后缀
+  if (/^(688|6|9)/.test(code)) return code + '.SH'; // 沪市
+  if (/^(0|2|3)/.test(code)) return code + '.SZ'; // 深市
+  if (/^8/.test(code)) return code + '.BJ'; // 北交所
+  return code + '.SH'; // 默认沪市
+}
+
+// 调 FTShare HTTP API
+async function ftFetch(path, params, method = 'GET') {
+  const url = new URL(FTSHARE_BASE + path);
+  const opts = { method, headers: { 'User-Agent': 'excel-ai-report-worker/1.0' } };
+  if (method === 'POST') {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(params || {});
+  } else {
+    for (const [k, v] of Object.entries(params || {})) {
+      if (v !== undefined && v !== null) url.searchParams.set(k, v);
+    }
+  }
+  const r = await fetch(url, opts);
+  const text = await r.text();
+  let json;
+  try { json = JSON.parse(text); } catch { json = { raw: text }; }
+  return json;
+}
+
+// 从 FTShare 响应提取表格行(data.records / data.items / items / 顶层数组)
+function extractRows(payload) {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (payload.data) {
+    if (Array.isArray(payload.data)) return payload.data;
+    if (Array.isArray(payload.data.records)) return payload.data.records;
+    if (Array.isArray(payload.data.items)) return payload.data.items;
+  }
+  if (Array.isArray(payload.records)) return payload.records;
+  if (Array.isArray(payload.items)) return payload.items;
+  return payload;
+}
+
+// 处理 /ftshare 请求
+async function handleFtshare(body) {
+  const stockCodes = String(body?.stockCodes || body?.stock_codes || '');
+  const codes = stockCodes.split(',').map(s => s.trim()).filter(Boolean);
+  const types = (body?.dataTypes && body.dataTypes.length)
+    ? body.dataTypes
+    : ['quote', 'financial', 'kline'];
+  if (!codes.length) return { success: false, error: 'stockCodes 为空' };
+
+  const stocks = [];
+  for (const code of codes) {
+    const symbol = toSymbol(code);
+    const entry = { code, symbol, data: {} };
+
+    if (types.includes('quote')) {
+      try {
+        entry.data.quote = extractRows(
+          await ftFetch('api/v1/market/data/daec/history/prices', { symbol })
+        );
+      } catch (e) { entry.data.quote = { error: e.message }; }
+    }
+    if (types.includes('financial')) {
+      try {
+        entry.data.financial = extractRows(
+          await ftFetch('api/v1/market/data/finance/income', { stock_code: symbol, year: 2024, page: 1, page_size: 5 })
+        );
+      } catch (e) { entry.data.financial = { error: e.message }; }
+    }
+    if (types.includes('kline')) {
+      try {
+        entry.data.kline = extractRows(
+          await ftFetch('api/v1/market/data/stock-candlesticks', {
+            symbol, interval_unit: 'Day', interval_value: 1, adjust_kind: 'Forward', until_ts_millis: Date.now(), limit: 120
+          }, 'POST')
+        );
+      } catch (e) { entry.data.kline = { error: e.message }; }
+    }
+    stocks.push(entry);
+  }
+  return { success: true, data: { stocks } };
+}
+
+function corsHeaders() {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+}
 
 export default {
-  async fetch(request, env, ctx) {
-    // 处理 CORS 预检请求
+  async fetch(request) {
     if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }
-      });
+      return new Response(null, { headers: corsHeaders() });
+    }
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405, headers: corsHeaders() });
     }
 
-    if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
-    }
+    const url = new URL(request.url);
+    let body = {};
+    try { body = await request.json(); } catch { /* 空 body */ }
 
     try {
-      const body = await request.json();
-      const prompt = body.prompt || '请生成一份数据分析报告';
-
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'glm-5.2',  // 根据实际模型名称调整
-          messages: [
-            { role: 'system', content: '你是一位专业的数据分析师，擅长从数据中发现洞察并生成结构化报告。' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 4000
-        })
-      });
-
-      const data = await response.json();
-      
-      return new Response(JSON.stringify(data), {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        }
+      if (url.pathname === '/ftshare') {
+        const result = await handleFtshare(body);
+        return new Response(JSON.stringify(result), {
+          headers: { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders() },
+        });
+      }
+      return new Response(JSON.stringify({ error: '未知路径: ' + url.pathname }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders() },
       });
     } catch (err) {
       return new Response(JSON.stringify({ error: err.message }), {
         status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        }
+        headers: { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders() },
       });
     }
   }
