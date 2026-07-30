@@ -286,7 +286,7 @@
         <!-- 1.5 FTShare 金融数据(独立入口,与 Excel 并列) -->
         <div class="card" id="ftshareCard">
             <h2><span class="icon">📈</span>1.5 FTShare 金融数据增强 <span class="badge badge-orange">可选</span></h2>
-            <p style="color: #6b7280; font-size: 13px; margin-bottom: 16px;">接入 FTShare MCP，自动获取 A股/港股/基金实时行情、财务指标等数据，合并到当前数据集</p>
+            <p style="color: #6b7280; font-size: 13px; margin-bottom: 16px;">接入 FTShare：实时行情 / 财务年报(近7年) / K线。财务数据仅保留以年为单位的年报，不影响其它分析功能</p>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <div class="form-group" style="margin-bottom: 0;">
@@ -300,7 +300,7 @@
                             <input type="checkbox" id="ftQuote" checked style="accent-color: #2563eb;"> 实时行情
                         </label>
                         <label style="display:flex;align-items:center;gap:6px;font-weight:normal;text-transform:none;letter-spacing: normal;font-size: 13px;cursor: pointer;">
-                            <input type="checkbox" id="ftFinancial" style="accent-color: #2563eb;"> 财务指标
+                            <input type="checkbox" id="ftFinancial" style="accent-color: #2563eb;"> 财务年报(近7年)
                         </label>
                         <label style="display:flex;align-items:center;gap:6px;font-weight:normal;text-transform:none;letter-spacing: normal;font-size: 13px;cursor: pointer;">
                             <input type="checkbox" id="ftKline" style="accent-color: #2563eb;"> K线数据
@@ -1241,7 +1241,36 @@
         // ==================== FTShare MCP 数据增强 ====================
         // 把 Worker 返回的 data[type] 规范成「有效记录数组」
         // 过滤: error、空 {raw:""}、只含 raw 的废包, 避免表格只剩 stock_code/data_type/raw
-        function normalizeFtshareRecords(val) {
+        // financial: 前端兜底只留年报 + 近7年(与 worker/proxy 规则一致, 旧 Worker 也能用)
+        function isAnnualReportRow(rec) {
+            if (!rec || typeof rec !== 'object') return false;
+            const t = String(rec.report_type || '').toLowerCase();
+            const cn = String(rec.report_type_cn || '');
+            if (t === 'annual' || t === 'year' || t === 'yearly' || t === 'a' || t === 'fy') return true;
+            if (cn.includes('年报') && !cn.includes('季') && !cn.includes('半年')) return true;
+            return false;
+        }
+        function filterFinancialAnnual7y(records) {
+            const nowY = new Date().getFullYear();
+            const minY = nowY - 6;
+            const byYear = new Map();
+            const rank = (r) => {
+                const form = String(r.report_form_type || '');
+                if (form.includes('合并未调整')) return 3;
+                if (form.includes('合并') && form.includes('调整')) return 2;
+                if (form.includes('合并')) return 1;
+                return 0;
+            };
+            for (const rec of records) {
+                if (!isAnnualReportRow(rec)) continue;
+                const y = Number(rec.year);
+                if (!Number.isFinite(y) || y < minY || y > nowY) continue;
+                const prev = byYear.get(y);
+                if (!prev || rank(rec) > rank(prev)) byYear.set(y, rec);
+            }
+            return [...byYear.entries()].sort((a, b) => b[0] - a[0]).map(([, r]) => r);
+        }
+        function normalizeFtshareRecords(val, dataType) {
             if (val == null) return { records: [], error: null };
             if (val && typeof val === 'object' && val.error) return { records: [], error: String(val.error) };
             const list = Array.isArray(val) ? val : [val];
@@ -1255,7 +1284,7 @@
                     if (typeof raw === 'string' && raw.trim()) {
                         try {
                             const parsed = JSON.parse(raw);
-                            const nested = normalizeFtshareRecords(parsed);
+                            const nested = normalizeFtshareRecords(parsed, dataType);
                             records.push(...nested.records);
                         } catch { /* skip */ }
                     }
@@ -1270,6 +1299,10 @@
                 } else {
                     records.push(rec);
                 }
+            }
+            // 财务: 仅年报、近7年(quote/kline 不动)
+            if (dataType === 'financial') {
+                return { records: filterFinancialAnnual7y(records), error: null };
             }
             return { records, error: null };
         }
@@ -1325,7 +1358,7 @@
                 const errMsgs = [];
                 (ftshareData.stocks || []).forEach(s => {
                     Object.entries(s.data || {}).forEach(([type, val]) => {
-                        const { records, error } = normalizeFtshareRecords(val);
+                        const { records, error } = normalizeFtshareRecords(val, type);
                         if (error) errMsgs.push(`${s.code}/${type}: ${error}`);
                         records.forEach(rec => {
                             const row = { stock_code: s.code, data_type: type };
@@ -1371,7 +1404,7 @@
             const rows = []; // { code, type, rec }
             data.stocks.forEach(s => {
                 Object.entries(s.data || {}).forEach(([type, val]) => {
-                    const { records, error } = normalizeFtshareRecords(val);
+                    const { records, error } = normalizeFtshareRecords(val, type);
                     records.forEach(rec => {
                         Object.keys(rec).forEach(k => {
                             if (k === 'raw' && (rec[k] === '' || rec[k] == null)) return;

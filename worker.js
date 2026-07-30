@@ -139,32 +139,95 @@ async function fetchQuote(symbol) {
   return krows;
 }
 
+// 是否年报(只按年; 排除季报/半年报)
+function isAnnualReport(row) {
+  if (!row || typeof row !== 'object') return false;
+  const t = String(row.report_type || '').toLowerCase();
+  const cn = String(row.report_type_cn || '');
+  if (t === 'annual' || t === 'year' || t === 'yearly' || t === 'a' || t === 'fy') return true;
+  if (cn.includes('年报') && !cn.includes('季') && !cn.includes('半年')) return true;
+  return false;
+}
+
+// 同一年多条(合并调整/未调整)时取优先级更高的一条
+function annualRank(row) {
+  const form = String(row.report_form_type || '');
+  if (form.includes('合并未调整')) return 3;
+  if (form.includes('合并') && form.includes('调整')) return 2;
+  if (form.includes('合并')) return 1;
+  return 0;
+}
+
+// 只保留年报, 覆盖近 years 年(默认 7), 每年最多 1 条, 按年份降序
+function filterAnnualLastNYears(rows, years = 7) {
+  const nowY = new Date().getFullYear();
+  const minY = nowY - (years - 1);
+  const byYear = new Map(); // year -> best row
+  for (const row of rows || []) {
+    if (!isAnnualReport(row)) continue;
+    const y = Number(row.year);
+    if (!Number.isFinite(y) || y < minY || y > nowY) continue;
+    const prev = byYear.get(y);
+    if (!prev || annualRank(row) > annualRank(prev)) byYear.set(y, row);
+  }
+  return [...byYear.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([, row]) => row);
+}
+
 async function fetchFinancial(symbol) {
-  // 不强制 year: 让接口返回近期报表; page_size 放大一点
-  const rows = extractRows(
-    await ftFetch('api/v1/market/data/finance/income', {
-      stock_code: symbol,
-      page: 1,
-      page_size: 20,
-    })
-  );
-  if (!rows.length) {
-    // 兼容某些环境必须带 year
-    const y = new Date().getFullYear();
-    for (const year of [y, y - 1, y - 2]) {
+  // 近 7 年: 按年请求并合并(接口对 report_type 过滤不可靠, 本地只留年报)
+  const nowY = new Date().getFullYear();
+  const years = [];
+  for (let y = nowY; y >= nowY - 6; y--) years.push(y);
+
+  const all = [];
+  const seen = new Set();
+  // 先整包拉一轮, 再按年补全
+  try {
+    const bulk = extractRows(
+      await ftFetch('api/v1/market/data/finance/income', {
+        stock_code: symbol,
+        page: 1,
+        page_size: 100,
+      })
+    );
+    for (const r of bulk) {
+      const key = `${r.year}|${r.report_type}|${r.report_form_type}|${r.publish_date}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        all.push(r);
+      }
+    }
+  } catch {
+    /* 按年补 */
+  }
+
+  for (const year of years) {
+    try {
       const r2 = extractRows(
         await ftFetch('api/v1/market/data/finance/income', {
           stock_code: symbol,
           year,
           page: 1,
-          page_size: 20,
+          page_size: 50,
         })
       );
-      if (r2.length) return r2;
+      for (const r of r2) {
+        const key = `${r.year}|${r.report_type}|${r.report_form_type}|${r.publish_date}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          all.push(r);
+        }
+      }
+    } catch {
+      /* 单年失败忽略, 其它年继续 */
     }
-    throw new Error('financial 无数据');
   }
-  return rows;
+
+  const annual = filterAnnualLastNYears(all, 7);
+  if (!annual.length) throw new Error('financial 无近7年年报数据');
+  return annual;
 }
 
 async function fetchKline(symbol) {
