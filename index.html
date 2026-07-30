@@ -9,10 +9,52 @@
     <script src="https://cdn.jsdelivr.net/npm/alasql@4"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; padding: 20px; color: #1f2937; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; padding: 20px; padding-top: 88px; color: #1f2937; scroll-behavior: smooth; }
         .container { max-width: 1480px; margin: 0 auto; }
         h1 { text-align: center; color: #111827; margin-bottom: 8px; font-size: 28px; font-weight: 700; }
-        .subtitle { text-align: center; color: #6b7280; font-size: 14px; margin-bottom: 32px; }
+        .subtitle { text-align: center; color: #6b7280; font-size: 14px; margin-bottom: 20px; }
+        /* 顶部固定功能导航: 一排按钮, 点击跳到对应区块 */
+        .top-nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            background: rgba(255,255,255,0.92); backdrop-filter: blur(10px);
+            border-bottom: 1px solid #e5e7eb; box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+        }
+        .top-nav-inner {
+            max-width: 1480px; margin: 0 auto; padding: 10px 20px;
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+        .top-nav-brand {
+            font-size: 14px; font-weight: 700; color: #111827; margin-right: 8px;
+            white-space: nowrap; display: flex; align-items: center; gap: 6px;
+        }
+        .top-nav-brand span { color: #6b7280; font-weight: 500; font-size: 12px; }
+        .top-nav-btns { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
+        .nav-btn {
+            border: 1px solid #e5e7eb; background: #f9fafb; color: #374151;
+            padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 550;
+            cursor: pointer; transition: all 0.15s; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .nav-btn:hover { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+        .nav-btn.active {
+            background: #2563eb; border-color: #2563eb; color: #fff;
+            box-shadow: 0 4px 12px rgba(37,99,235,0.28);
+        }
+        .nav-btn.locked { opacity: 0.55; }
+        .nav-btn .nav-dot {
+            width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.45;
+        }
+        .nav-btn.active .nav-dot { opacity: 1; background: #fff; }
+        .card.nav-flash {
+            outline: 2px solid #2563eb; outline-offset: 3px;
+            box-shadow: 0 0 0 6px rgba(37,99,235,0.12);
+            transition: outline 0.3s, box-shadow 0.3s;
+        }
+        @media (max-width: 720px) {
+            body { padding-top: 120px; }
+            .top-nav-brand span { display: none; }
+            .nav-btn { padding: 7px 11px; font-size: 12px; }
+        }
         .card { background: white; border-radius: 16px; padding: 28px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
         .card h2 { color: #111827; margin-bottom: 20px; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
         .card h2 .icon { width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 16px; }
@@ -155,12 +197,36 @@
 <base target="_blank">
 </head>
 <body>
+    <!-- 顶部功能导航: 点击跳转到对应区域, 不用整页竖着翻 -->
+    <nav class="top-nav" id="topNav" aria-label="功能导航">
+        <div class="top-nav-inner">
+            <div class="top-nav-brand">📊 协同报告 <span>快速定位</span></div>
+            <div class="top-nav-btns">
+                <button type="button" class="nav-btn active" data-target="entrySection" onclick="goToSection('entrySection', this)">
+                    <i class="nav-dot"></i>1 数据导入
+                </button>
+                <button type="button" class="nav-btn locked" data-target="cleanCard" data-need-data="1" onclick="goToSection('cleanCard', this)">
+                    <i class="nav-dot"></i>2 数据清洗
+                </button>
+                <button type="button" class="nav-btn locked" data-target="verifyCard" data-need-data="1" onclick="goToSection('verifyCard', this)">
+                    <i class="nav-dot"></i>3 数据核验
+                </button>
+                <button type="button" class="nav-btn locked" data-target="analysisCard" data-need-data="1" onclick="goToSection('analysisCard', this)">
+                    <i class="nav-dot"></i>4 图像生成
+                </button>
+                <button type="button" class="nav-btn locked" data-target="reportCard" data-need-data="1" onclick="goToSection('reportCard', this)">
+                    <i class="nav-dot"></i>5 AI 报告
+                </button>
+            </div>
+        </div>
+    </nav>
+
     <div class="container">
         <h1>📊 Excel 智能分析与 AI 报告生成平台</h1>
-        <p class="subtitle">智能导入 · 多Sheet · 横竖向表头 · 转置 · AlaSQL · AI报告</p>
+        <p class="subtitle">智能导入 · 多Sheet · 横竖向表头 · 转置 · AlaSQL · AI报告 · 顶部按钮一键跳转</p>
 
         <!-- 初始入口:左 Excel 导入 / 右 FTShare 调用,二选一进入分析 -->
-        <div class="entry-grid">
+        <div class="entry-grid" id="entrySection">
         <!-- 1. 智能文件导入 -->
         <div class="card" id="uploadCard">
             <h2><span class="icon">📁</span>1. 智能 Excel 导入</h2>
@@ -1194,7 +1260,91 @@
         }
 
         // ==================== UI 函数 ====================
-        function showSections() { ['cleanCard', 'verifyCard', 'analysisCard', 'reportCard'].forEach(id => document.getElementById(id).classList.remove('hidden')); }
+        function showSections() {
+            ['cleanCard', 'verifyCard', 'analysisCard', 'reportCard'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('hidden');
+            });
+            updateNavLockState();
+        }
+
+        // 顶部导航: 有数据后解锁清洗/核验/图表/AI
+        function hasWorkingData() {
+            return !!(engine && engine.data && engine.data.length) || (originalData && originalData.length);
+        }
+        function updateNavLockState() {
+            document.querySelectorAll('.top-nav .nav-btn[data-need-data="1"]').forEach(btn => {
+                btn.classList.toggle('locked', !hasWorkingData());
+            });
+        }
+        function setActiveNav(targetId) {
+            document.querySelectorAll('.top-nav .nav-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-target') === targetId);
+            });
+        }
+        function goToSection(targetId, btnEl) {
+            const needData = btnEl && btnEl.getAttribute('data-need-data') === '1';
+            if (needData && !hasWorkingData()) {
+                alert('请先通过左侧 Excel 导入或右侧 FTShare 获取数据，再进入该功能。');
+                goToSection('entrySection');
+                return;
+            }
+            // 若目标还是 hidden, 先展开后续区块
+            if (needData) showSections();
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            setActiveNav(targetId);
+            // 固定导航高度偏移, 避免标题被挡住
+            const navH = (document.getElementById('topNav')?.offsetHeight || 64) + 12;
+            const top = el.getBoundingClientRect().top + window.pageYOffset - navH;
+            window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            // 轻微高亮目标卡片(entry 是 grid 则高亮两个入口)
+            const flashTargets = targetId === 'entrySection'
+                ? [document.getElementById('uploadCard'), document.getElementById('ftshareCard')].filter(Boolean)
+                : [el];
+            flashTargets.forEach(t => {
+                t.classList.add('nav-flash');
+                setTimeout(() => t.classList.remove('nav-flash'), 1200);
+            });
+            // 图表区跳转后 resize, 避免容器刚显示时宽高为 0
+            if (targetId === 'analysisCard') {
+                setTimeout(() => { try { chartInstance && chartInstance.resize(); } catch (e) {} }, 350);
+            }
+        }
+        // 滚动时自动高亮当前区块对应按钮
+        function initNavScrollSpy() {
+            const sections = [
+                { id: 'entrySection', el: () => document.getElementById('entrySection') },
+                { id: 'cleanCard', el: () => document.getElementById('cleanCard') },
+                { id: 'verifyCard', el: () => document.getElementById('verifyCard') },
+                { id: 'analysisCard', el: () => document.getElementById('analysisCard') },
+                { id: 'reportCard', el: () => document.getElementById('reportCard') },
+            ];
+            let ticking = false;
+            window.addEventListener('scroll', () => {
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(() => {
+                    const navH = (document.getElementById('topNav')?.offsetHeight || 64) + 40;
+                    let current = 'entrySection';
+                    for (const s of sections) {
+                        const node = s.el();
+                        if (!node || node.classList.contains('hidden')) continue;
+                        const top = node.getBoundingClientRect().top;
+                        if (top - navH <= 0) current = s.id;
+                    }
+                    setActiveNav(current);
+                    ticking = false;
+                });
+            }, { passive: true });
+        }
+        // DOM 就绪后初始化导航
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => { updateNavLockState(); initNavScrollSpy(); });
+        } else {
+            updateNavLockState();
+            initNavScrollSpy();
+        }
         function populateSelects() {
             ['verifyColumn', 'xAxis', 'yAxis'].forEach(id => {
                 const sel = document.getElementById(id);
