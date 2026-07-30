@@ -1275,30 +1275,44 @@
                 return;
             }
 
+            // 收集所有记录的字段;支持 data[type] 为数组(多行)或单对象
             const allKeys = new Set();
+            const rows = []; // { code, type, rec }
             data.stocks.forEach(s => {
-                Object.values(s.data).forEach(v => {
-                    if (v && typeof v === 'object' && !v.error) {
-                        Object.keys(v).forEach(k => allKeys.add(k));
-                    }
+                Object.entries(s.data).forEach(([type, val]) => {
+                    const list = Array.isArray(val) ? val : (val && typeof val === 'object' && !val.error ? [val] : []);
+                    list.forEach(rec => {
+                        if (rec && typeof rec === 'object' && !rec.error) {
+                            Object.keys(rec).forEach(k => allKeys.add(k));
+                            rows.push({ code: s.code, type, rec });
+                        }
+                    });
+                    if (val && val.error && !list.length) rows.push({ code: s.code, type, rec: { error: val.error } });
                 });
             });
             const keys = Array.from(allKeys);
 
+            if (!rows.length) {
+                table.innerHTML = '<tr><td style="text-align:center;color:#9ca3af;padding:12px;">无数据</td></tr>';
+                return;
+            }
+
             let html = '<thead><tr><th>股票代码</th><th>数据类型</th>' + keys.map(k => `<th>${k}</th>`).join('') + '</tr></thead><tbody>';
-            data.stocks.forEach(s => {
-                Object.entries(s.data).forEach(([type, val]) => {
-                    html += `<tr><td>${s.code}</td><td>${type}</td>`;
-                    if (val && typeof val === 'object' && !val.error) {
-                        keys.forEach(k => {
-                            const v = val[k];
-                            html += `<td>${v !== undefined && v !== null ? String(v).substring(0, 50) : '-'}</td>`;
-                        });
-                    } else {
-                        html += `<td colspan="${keys.length}" style="color:#dc2626;">${val?.error || '无数据'}</td>`;
-                    }
-                    html += '</tr>';
-                });
+            rows.forEach(r => {
+                html += `<tr><td>${r.code}</td><td>${r.type}</td>`;
+                if (r.rec.error) {
+                    html += `<td colspan="${keys.length || 1}" style="color:#dc2626;">${r.rec.error}</td>`;
+                } else {
+                    keys.forEach(k => {
+                        const v = r.rec[k];
+                        let cell = '-';
+                        if (v !== undefined && v !== null) {
+                            cell = (typeof v === 'object') ? JSON.stringify(v).substring(0, 60) : String(v).substring(0, 60);
+                        }
+                        html += `<td>${cell}</td>`;
+                    });
+                }
+                html += '</tr>';
             });
             html += '</tbody>';
             table.innerHTML = html;
